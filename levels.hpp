@@ -7,28 +7,6 @@ inline sf::FloatRect makeRect(float x, float y, float width, float height)
     return sf::FloatRect({x, y}, {width, height});
 }
 
-inline void refreshAbilitiesForLevel(Player& player, std::size_t levelIndex)
-{
-    player.canDoubleJump       = levelIndex >= 1;
-    player.canClimb            = levelIndex >= 2;
-    player.extraJumpsRemaining = player.canDoubleJump ? 1 : 0;
-}
-
-inline void resetLevel(Level& level, Player& player, std::size_t levelIndex)
-{
-    for (Ingredient& ingredient : level.ingredients)
-    {
-        ingredient.collected = false;
-    }
-
-    player.position          = level.spawnPosition;
-    player.velocity          = {0.f, 0.f};
-    player.onGround          = false;
-    player.touchingClimbWall = false;
-
-    refreshAbilitiesForLevel(player, levelIndex);
-}
-
 inline std::vector<Level> createLevels()
 {
     std::vector<Level> levels;

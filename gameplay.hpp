@@ -3,10 +3,7 @@
 #include "game_types.hpp"
 
 constexpr float kMoveSpeed      = 260.f;
-constexpr float kJumpSpeed      = -590.f;
 constexpr float kGravity        = 1200.f;
-constexpr float kClimbSpeed     = 180.f;
-constexpr float kWallSlideSpeed = 120.f;
 constexpr float kFixedDt        = 60.f;
 
 inline sf::FloatRect getPlayerBounds(const Player& player)
@@ -25,29 +22,6 @@ inline bool allIngredientsCollected(const Level& level)
     }
 
     return true;
-}
-
-inline void updateClimbWallContact(Player& player, const Level& level)
-{
-    player.touchingClimbWall = false;
-
-    if (!player.canClimb)
-    {
-        return;
-    }
-
-    sf::FloatRect wallCheck = getPlayerBounds(player);
-    wallCheck.position.x -= 3.f;
-    wallCheck.size.x += 6.f;
-
-    for (const sf::FloatRect& wall : level.climbWalls)
-    {
-        if (wallCheck.findIntersection(wall))
-        {
-            player.touchingClimbWall = true;
-            return;
-        }
-    }
 }
 
 inline void resolveHorizontalCollisions(Player& player, const Level& level, float dt)
@@ -93,10 +67,9 @@ inline void resolveVerticalCollisions(Player& player, const Level& level, float 
 
         if (player.velocity.y > 0.f)
         {
-            player.position.y          = solid.position.y - player.size.y;
-            player.velocity.y          = 0.f;
-            player.onGround            = true;
-            player.extraJumpsRemaining = player.canDoubleJump ? 1 : 0;
+            player.position.y = solid.position.y - player.size.y;
+            player.velocity.y = 0.f;
+            player.onGround   = true;
         }
         else if (player.velocity.y < 0.f)
         {
