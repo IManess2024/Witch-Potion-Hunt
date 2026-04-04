@@ -2,33 +2,27 @@ cmake_minimum_required(VERSION 3.24)
 
 project(WitchPotionHunt VERSION 0.1.0 LANGUAGES CXX)
 
+include(FetchContent)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_path(SFML_INCLUDE_DIR
-    NAMES SFML/Graphics.hpp
-    PATHS /usr/local/include
-    REQUIRED
+# Build SFML as static libraries so the first template run on Windows is simpler.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_AUDIO OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SFML
+    URL https://github.com/SFML/SFML/archive/refs/tags/3.0.2.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
-find_library(SFML_GRAPHICS_LIBRARY
-    NAMES sfml-graphics
-    PATHS /usr/local/lib
-    REQUIRED
-)
-
-find_library(SFML_WINDOW_LIBRARY
-    NAMES sfml-window
-    PATHS /usr/local/lib
-    REQUIRED
-)
-
-find_library(SFML_SYSTEM_LIBRARY
-    NAMES sfml-system
-    PATHS /usr/local/lib
-    REQUIRED
-)
+FetchContent_MakeAvailable(SFML)
 
 add_executable(WitchPotionHunt
     main.cpp
@@ -38,13 +32,12 @@ add_executable(WitchPotionHunt
     rendering.hpp
 )
 
-target_include_directories(WitchPotionHunt PRIVATE ${SFML_INCLUDE_DIR})
+target_link_libraries(WitchPotionHunt PRIVATE SFML::Graphics)
 
-target_link_libraries(WitchPotionHunt PRIVATE
-    ${SFML_GRAPHICS_LIBRARY}
-    ${SFML_WINDOW_LIBRARY}
-    ${SFML_SYSTEM_LIBRARY}
-)
+if(WIN32)
+    target_link_libraries(WitchPotionHunt PRIVATE SFML::Main)
+    set_target_properties(WitchPotionHunt PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 if(MSVC)
     target_compile_options(WitchPotionHunt PRIVATE /W4 /permissive-)

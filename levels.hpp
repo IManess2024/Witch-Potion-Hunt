@@ -4,7 +4,7 @@
 
 inline sf::FloatRect makeRect(float x, float y, float width, float height)
 {
-    return sf::FloatRect(x, y, width, height);
+    return sf::FloatRect({x, y}, {width, height});
 }
 
 inline void refreshAbilitiesForLevel(Player& player, std::size_t levelIndex)

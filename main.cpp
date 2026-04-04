@@ -17,7 +17,7 @@ constexpr unsigned int kWindowHeight = 720;
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(kWindowWidth, kWindowHeight), "Witch Potion Hunt");
+    sf::RenderWindow window(sf::VideoMode({kWindowWidth, kWindowHeight}), "Witch Potion Hunt");
     window.setFramerateLimit(60);
 
     std::vector<Level> levels = createLevels();
@@ -30,16 +30,15 @@ int main()
 
     while (window.isOpen())
     {
-        sf::Event event;
-        while (window.pollEvent(event))
+        while (const std::optional event = window.pollEvent())
         {
-            if (event.type == sf::Event::Closed)
+            if (event->is<sf::Event::Closed>())
             {
                 window.close();
             }
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
         {
             window.close();
         }
@@ -50,12 +49,12 @@ int main()
         {
             updateClimbWallContact(player, currentLevel);
 
-            const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
-            const bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-            const bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
-            const bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+            const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
+            const bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
+            const bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
+            const bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
 
-            const bool jumpHeld             = moveUp || sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+            const bool jumpHeld             = moveUp || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
             const bool jumpPressedThisFrame = jumpHeld && !jumpWasHeld;
             jumpWasHeld                     = jumpHeld;
 
@@ -136,16 +135,15 @@ int main()
                     continue;
                 }
 
-                sf::FloatRect ingredientBounds(
-                    ingredient.position.x - 10.f, ingredient.position.y - 10.f, 20.f, 20.f);
-                if (getPlayerBounds(player).intersects(ingredientBounds))
+                sf::FloatRect ingredientBounds(ingredient.position - sf::Vector2f(10.f, 10.f), {20.f, 20.f});
+                if (getPlayerBounds(player).findIntersection(ingredientBounds))
                 {
                     ingredient.collected = true;
                 }
             }
 
             if (allIngredientsCollected(currentLevel) &&
-                getPlayerBounds(player).intersects(currentLevel.cauldronArea))
+                getPlayerBounds(player).findIntersection(currentLevel.cauldronArea))
             {
                 ++currentLevelIndex;
 
@@ -170,16 +168,16 @@ int main()
 
         for (const sf::FloatRect& solid : levelToDraw.solids)
         {
-            sf::RectangleShape platform({solid.width, solid.height});
-            platform.setPosition(solid.left, solid.top);
+            sf::RectangleShape platform({solid.size.x, solid.size.y});
+            platform.setPosition(solid.position);
             platform.setFillColor(sf::Color(92, 74, 60));
             window.draw(platform);
         }
 
         for (const sf::FloatRect& wall : levelToDraw.climbWalls)
         {
-            sf::RectangleShape ivy({wall.width, wall.height});
-            ivy.setPosition(wall.left, wall.top);
+            sf::RectangleShape ivy({wall.size.x, wall.size.y});
+            ivy.setPosition(wall.position);
             ivy.setFillColor(sf::Color(68, 150, 92));
             window.draw(ivy);
         }

@@ -61,24 +61,24 @@ inline void drawHud(sf::RenderWindow& window, const Level& level, const Player& 
 inline void drawCauldron(sf::RenderWindow& window, const Level& level, bool readyForExit)
 {
     sf::RectangleShape bowl({70.f, 38.f});
-    bowl.setPosition(level.cauldronArea.left, level.cauldronArea.top + 24.f);
+    bowl.setPosition(level.cauldronArea.position + sf::Vector2f(0.f, 24.f));
     bowl.setFillColor(readyForExit ? sf::Color(82, 204, 103) : sf::Color(70, 70, 70));
     window.draw(bowl);
 
     sf::RectangleShape leg({10.f, 18.f});
     leg.setFillColor(sf::Color(45, 30, 20));
 
-    leg.setPosition(level.cauldronArea.left + 8.f, level.cauldronArea.top + 60.f);
+    leg.setPosition(level.cauldronArea.position + sf::Vector2f(8.f, 60.f));
     window.draw(leg);
-    leg.setPosition(level.cauldronArea.left + 52.f, level.cauldronArea.top + 60.f);
+    leg.setPosition(level.cauldronArea.position + sf::Vector2f(52.f, 60.f));
     window.draw(leg);
 
     for (int bubbleIndex = 0; bubbleIndex < 3; ++bubbleIndex)
     {
         sf::CircleShape bubble(7.f - static_cast<float>(bubbleIndex));
         bubble.setFillColor(readyForExit ? sf::Color(170, 255, 190) : sf::Color(120, 120, 120));
-        bubble.setPosition(level.cauldronArea.left + 12.f + bubbleIndex * 18.f,
-                           level.cauldronArea.top + 10.f - bubbleIndex * 8.f);
+        bubble.setPosition(level.cauldronArea.position +
+                           sf::Vector2f(12.f + bubbleIndex * 18.f, 10.f - bubbleIndex * 8.f));
         window.draw(bubble);
     }
 }

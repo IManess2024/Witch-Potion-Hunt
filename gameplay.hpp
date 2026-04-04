@@ -11,7 +11,7 @@ constexpr float kFixedDt        = 60.f;
 
 inline sf::FloatRect getPlayerBounds(const Player& player)
 {
-    return sf::FloatRect(player.position.x, player.position.y, player.size.x, player.size.y);
+    return sf::FloatRect(player.position, player.size);
 }
 
 inline bool allIngredientsCollected(const Level& level)
@@ -37,12 +37,12 @@ inline void updateClimbWallContact(Player& player, const Level& level)
     }
 
     sf::FloatRect wallCheck = getPlayerBounds(player);
-    wallCheck.left -= 3.f;
-    wallCheck.width += 6.f;
+    wallCheck.position.x -= 3.f;
+    wallCheck.size.x += 6.f;
 
     for (const sf::FloatRect& wall : level.climbWalls)
     {
-        if (wallCheck.intersects(wall))
+        if (wallCheck.findIntersection(wall))
         {
             player.touchingClimbWall = true;
             return;
@@ -58,18 +58,18 @@ inline void resolveHorizontalCollisions(Player& player, const Level& level, floa
 
     for (const sf::FloatRect& solid : level.solids)
     {
-        if (!playerBounds.intersects(solid))
+        if (!playerBounds.findIntersection(solid))
         {
             continue;
         }
 
         if (player.velocity.x > 0.f)
         {
-            player.position.x = solid.left - player.size.x;
+            player.position.x = solid.position.x - player.size.x;
         }
         else if (player.velocity.x < 0.f)
         {
-            player.position.x = solid.left + solid.width;
+            player.position.x = solid.position.x + solid.size.x;
         }
 
         player.velocity.x = 0.f;
@@ -86,21 +86,21 @@ inline void resolveVerticalCollisions(Player& player, const Level& level, float 
 
     for (const sf::FloatRect& solid : level.solids)
     {
-        if (!playerBounds.intersects(solid))
+        if (!playerBounds.findIntersection(solid))
         {
             continue;
         }
 
         if (player.velocity.y > 0.f)
         {
-            player.position.y          = solid.top - player.size.y;
+            player.position.y          = solid.position.y - player.size.y;
             player.velocity.y          = 0.f;
             player.onGround            = true;
             player.extraJumpsRemaining = player.canDoubleJump ? 1 : 0;
         }
         else if (player.velocity.y < 0.f)
         {
-            player.position.y = solid.top + solid.height;
+            player.position.y = solid.position.y + solid.size.y;
             player.velocity.y = 0.f;
         }
 
