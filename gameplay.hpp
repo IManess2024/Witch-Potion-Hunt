@@ -2,7 +2,8 @@
 
 #include "game_types.hpp"
 
-constexpr float kMoveSpeed      = 260.f;
+constexpr float kMoveSpeed = 260.f; 
+constexpr float kJumpSpeed = -590.0f;
 constexpr float kGravity        = 1200.f;
 constexpr float kFixedDt        = 60.f;
 

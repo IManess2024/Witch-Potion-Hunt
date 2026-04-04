@@ -23,7 +23,9 @@ int main()
     std::vector<Level> levels = createLevels();
     Player             player;
     std::size_t        currentLevelIndex = 0;
-    bool               gameWon           = false;
+    bool               gameWon = false;
+    bool               jumpwasheld = false;
+
 
     while (window.isOpen())
     {
@@ -49,7 +51,10 @@ int main()
             const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
             const bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
             const bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
-            const bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
+            const bool jumpheld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
+            const bool jumppressedthisframe = jumpheld && !jumpwasheld;
+            jumpwasheld = jumpheld;
+
 
             float horizontalInput = 0.f;
 
@@ -64,6 +69,12 @@ int main()
             }
 
             player.velocity.x = horizontalInput * kMoveSpeed;
+            if (jumppressedthisframe && player.onGround)
+            {
+                player.velocity.y = kJumpSpeed;
+                player.onGround = false;
+
+            }
             player.velocity.y += kGravity / kFixedDt;
 
             resolveHorizontalCollisions(player, currentLevel, kFixedDt);
@@ -72,6 +83,12 @@ int main()
             player.position.x =
                 std::clamp(player.position.x, 0.f, static_cast<float>(kWindowWidth) - player.size.x);
         }
+        else
+        {
+            jumpwasheld = false;
+
+        }
+
 
         for (const sf::FloatRect& solid : currentLevel.solids)
         {
