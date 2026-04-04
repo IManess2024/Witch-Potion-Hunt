@@ -7,6 +7,15 @@ inline sf::FloatRect makeRect(float x, float y, float width, float height)
     return sf::FloatRect({x, y}, {width, height});
 }
 
+inline void PlacePlayerAtLevelSpawn(const Level& level, Player& player)
+{
+    player.position = level.spawnPosition;
+    player.velocity = { 0.0f, 0.0f };
+    player.onGround = false;
+    player.touchingClimbWall = false;
+
+}
+
 inline std::vector<Level> createLevels()
 {
     std::vector<Level> levels;

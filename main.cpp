@@ -27,6 +27,10 @@ int main()
     bool               jumpwasheld = false;
 
 
+    PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
+
+
+
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
@@ -84,6 +88,22 @@ int main()
 
             player.position.x =
                 std::clamp(player.position.x, 0.f, static_cast<float>(kWindowWidth) - player.size.x);
+
+            const bool PortalReady = allIngredientsCollected(currentLevel);
+            if (PortalReady && getPlayerBounds(player).findIntersection(currentLevel.cauldronArea))
+            {
+                currentLevelIndex++;
+                if (currentLevelIndex >= levels.size())
+                {
+                    currentLevelIndex = levels.size() - 1;
+                    gameWon = true;
+
+                }
+                else
+                    PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
+
+            }
+
         }
         else
         {
@@ -91,8 +111,11 @@ int main()
 
         }
 
+        const Level& levelToDraw = levels[currentLevelIndex];
+        const bool PortalReady = allIngredientsCollected(levelToDraw);
 
-        for (const sf::FloatRect& solid : currentLevel.solids)
+
+        for (const sf::FloatRect& solid : levelToDraw.solids)
         {
             sf::RectangleShape platform({solid.size.x, solid.size.y});
             platform.setPosition(solid.position);
@@ -100,7 +123,7 @@ int main()
             window.draw(platform);
         }
 
-        for (const Ingredient& ingredient : currentLevel.ingredients)
+        for (const Ingredient& ingredient : levelToDraw.ingredients)
         {
             if (ingredient.collected)
             {
@@ -114,9 +137,9 @@ int main()
             window.draw(circle);
         }
 
-        drawCauldron(window, currentLevel, allIngredientsCollected(currentLevel));
+        drawCauldron(window, levelToDraw,PortalReady);
         drawPlayer(window, player);
-        drawHud(window, currentLevel, player);
+        drawHud(window, levelToDraw, player);
         window.display();
     }
 }
