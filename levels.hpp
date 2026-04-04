@@ -22,8 +22,8 @@ inline std::vector<Level> createLevels()
         level.solids.push_back(makeRect(410.f, 390.f, 180.f, 20.f));
         level.solids.push_back(makeRect(690.f, 310.f, 180.f, 20.f));
 
-        level.ingredients.push_back({{190.f, 440.f}, false});
-        level.ingredients.push_back({{100.f, 545.f}, false});
+        level.ingredients.push_back({ {100.f, 545.f}, false });
+        level.ingredients.push_back({ {190.f, 440.f}, false });
         level.ingredients.push_back({{470.f, 360.f}, false});
         level.ingredients.push_back({{760.f, 280.f}, false});
 

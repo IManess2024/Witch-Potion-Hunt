@@ -80,4 +80,23 @@ inline void resolveVerticalCollisions(Player& player, const Level& level, float 
 
         playerBounds = getPlayerBounds(player);
     }
+
+}
+
+void CollectIngredients(Player& player, Level& level)
+{
+    for (Ingredient& ingredient : level.ingredients)
+    {
+        if (ingredient.collected)
+        {
+            continue;
+        }
+        sf::FloatRect IngredientBounds(ingredient.position - sf::Vector2f(10.0f, 10.0f), { 20.0f, 20.0f });
+        if (getPlayerBounds(player).findIntersection(IngredientBounds))
+        {
+            ingredient.collected = true;
+        }
+
+
+    }
 }

@@ -44,7 +44,7 @@ int main()
 
         window.clear(sf::Color(24, 28, 36));
 
-        const Level& currentLevel = levels[currentLevelIndex];
+         Level& currentLevel = levels[currentLevelIndex];
 
         if (!gameWon)
         {
@@ -79,6 +79,8 @@ int main()
 
             resolveHorizontalCollisions(player, currentLevel, kFixedDt);
             resolveVerticalCollisions(player, currentLevel, kFixedDt);
+
+            CollectIngredients(player, currentLevel);
 
             player.position.x =
                 std::clamp(player.position.x, 0.f, static_cast<float>(kWindowWidth) - player.size.x);
