@@ -29,6 +29,9 @@ int main()
 
     PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
 
+    refreshabilitesforlevel(player, currentLevelIndex);
+
+
 
 
     while (window.isOpen())
@@ -73,11 +76,19 @@ int main()
             }
 
             player.velocity.x = horizontalInput * kMoveSpeed;
-            if (jumppressedthisframe && player.onGround)
+            if (jumppressedthisframe)
             {
-                player.velocity.y = kJumpSpeed;
-                player.onGround = false;
+                if (player.onGround)
+                {
+                    player.velocity.y = kJumpSpeed;
+                    player.onGround = false;
+                }
+                else if (player.extraJumpsRemaining > 0)
+                {
+                    player.velocity.y = kJumpSpeed;
+                    player.extraJumpsRemaining--;
 
+                }
             }
             player.velocity.y += kGravity / kFixedDt;
 
@@ -100,8 +111,12 @@ int main()
 
                 }
                 else
+                {
                     PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
+                    refreshabilitesforlevel(player, currentLevelIndex);
 
+                }
+                   
             }
 
         }

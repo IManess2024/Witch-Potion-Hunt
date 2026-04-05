@@ -100,3 +100,11 @@ void CollectIngredients(Player& player, Level& level)
 
     }
 }
+
+inline void refreshabilitesforlevel(Player& player, std::size_t levelindex)
+{
+    player.canDoubleJump = levelindex >= 1;
+    player.canClimb = levelindex >= 2;
+    player.extraJumpsRemaining = player.canDoubleJump ? 1 : 0;
+    
+}

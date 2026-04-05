@@ -55,7 +55,7 @@ inline std::vector<Level> createLevels()
         level.ingredients.push_back({{120.f, 545.f}, false});
         level.ingredients.push_back({{320.f, 440.f}, false});
         level.ingredients.push_back({{550.f, 350.f}, false});
-        level.ingredients.push_back({{835.f, 160.f}, false});
+        level.ingredients.push_back({{720.f, 160.f}, false});
 
         levels.push_back(level);
     }
