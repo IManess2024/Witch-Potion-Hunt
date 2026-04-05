@@ -55,9 +55,11 @@ int main()
 
         if (!gameWon)
         {
+            updateclimbwallcontact(player, currentLevel);
             const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
             const bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
             const bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
+            const bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
             const bool jumpheld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
             const bool jumppressedthisframe = jumpheld && !jumpwasheld;
             jumpwasheld = jumpheld;
@@ -78,7 +80,7 @@ int main()
             player.velocity.x = horizontalInput * kMoveSpeed;
             if (jumppressedthisframe)
             {
-                if (player.onGround)
+                if (player.onGround || (player.touchingClimbWall && player.canClimb))
                 {
                     player.velocity.y = kJumpSpeed;
                     player.onGround = false;
@@ -90,11 +92,33 @@ int main()
 
                 }
             }
-            player.velocity.y += kGravity / kFixedDt;
+            const bool climbnow = player.canClimb && player.touchingClimbWall && (moveUp || moveDown);
+            if (climbnow)
+            {
+                player.velocity.y = 0.f;
+                if (moveUp)
+                {
+                    player.velocity.y = -kClimbSpeed / kFixedDt;
+                }
+                else if (moveDown)
+                {
+                    player.velocity.y = kClimbSpeed / kFixedDt;
+
+                }
+            }
+            else
+            {
+                player.velocity.y += kGravity / kFixedDt;
+                if (player.touchingClimbWall && player.canClimb && player.velocity.y > kWallSlideSpeed / kFixedDt)
+                {
+                    player.velocity.y = kWallSlideSpeed / kFixedDt;
+
+                }
+            }
 
             resolveHorizontalCollisions(player, currentLevel, kFixedDt);
             resolveVerticalCollisions(player, currentLevel, kFixedDt);
-
+            updateclimbwallcontact(player, currentLevel);
             CollectIngredients(player, currentLevel);
 
             player.position.x =
@@ -136,6 +160,14 @@ int main()
             platform.setPosition(solid.position);
             platform.setFillColor(sf::Color(92, 74, 60));
             window.draw(platform);
+        }
+
+        for (const sf::FloatRect& wall : levelToDraw.climbWalls)
+        {
+            sf::RectangleShape ivy({ wall.size.x, wall.size.y });
+            ivy.setPosition(wall.position);
+            ivy.setFillColor(sf::Color(68, 150, 92));
+            window.draw(ivy);
         }
 
         for (const Ingredient& ingredient : levelToDraw.ingredients)

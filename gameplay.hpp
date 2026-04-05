@@ -6,6 +6,11 @@ constexpr float kMoveSpeed = 260.f;
 constexpr float kJumpSpeed = -590.0f;
 constexpr float kGravity        = 1200.f;
 constexpr float kFixedDt        = 60.f;
+constexpr float kClimbSpeed = 180.0f;
+constexpr float kWallSlideSpeed = 120.0f;
+
+
+
 
 inline sf::FloatRect getPlayerBounds(const Player& player)
 {
@@ -24,6 +29,8 @@ inline bool allIngredientsCollected(const Level& level)
 
     return true;
 }
+
+
 
 inline void resolveHorizontalCollisions(Player& player, const Level& level, float dt)
 {
@@ -107,4 +114,26 @@ inline void refreshabilitesforlevel(Player& player, std::size_t levelindex)
     player.canClimb = levelindex >= 2;
     player.extraJumpsRemaining = player.canDoubleJump ? 1 : 0;
     
+}
+
+
+void updateclimbwallcontact(Player& player, const Level& level)
+{
+    player.touchingClimbWall = false;
+    if (!player.canClimb)
+    {
+        return;
+    }
+    sf::FloatRect WallCheck = getPlayerBounds(player);
+    WallCheck.position.x -= 3.f;
+    WallCheck.size.x += 6.f;
+    for (const sf::FloatRect& Wall : level.climbWalls)
+    {
+        if (WallCheck.findIntersection(Wall))
+        {
+            player.touchingClimbWall = true;
+            return;
+
+        }
+    }
 }
