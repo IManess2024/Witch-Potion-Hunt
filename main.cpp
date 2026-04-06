@@ -98,20 +98,20 @@ int main()
                 player.velocity.y = 0.f;
                 if (moveUp)
                 {
-                    player.velocity.y = -kClimbSpeed / kFixedDt;
+                    player.velocity.y = -kClimbSpeed;
                 }
                 else if (moveDown)
                 {
-                    player.velocity.y = kClimbSpeed / kFixedDt;
+                    player.velocity.y = kClimbSpeed;
 
                 }
             }
             else
             {
                 player.velocity.y += kGravity / kFixedDt;
-                if (player.touchingClimbWall && player.canClimb && player.velocity.y > kWallSlideSpeed / kFixedDt)
+                if (player.touchingClimbWall && player.canClimb && player.velocity.y > kWallSlideSpeed)
                 {
-                    player.velocity.y = kWallSlideSpeed / kFixedDt;
+                    player.velocity.y = kWallSlideSpeed;
 
                 }
             }
