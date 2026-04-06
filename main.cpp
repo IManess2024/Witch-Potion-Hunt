@@ -11,19 +11,50 @@
 
 namespace
 {
-constexpr unsigned int kWindowWidth  = 1280;
-constexpr unsigned int kWindowHeight = 720;
+    constexpr unsigned int kWindowWidth = 1280;
+    constexpr unsigned int kWindowHeight = 720;
+    constexpr char kWindowTitle[] = "Witch Potion Hunt";
+    constexpr float kDeathThresholdY = static_cast<float>(kWindowHeight) + 20.0f;
+
+    sf::FloatRect GetRestartButtonBounds()
+    {
+        return sf::FloatRect({ 520.0f , 404.0f }, { 240.0f, 72.0f });
+
+    }
+
+    bool IsPointInside(const sf::FloatRect& rect, const sf::Vector2f point)
+    {
+        return point.x >= rect.position.x && point.x <= rect.position.x + rect.size.x &&
+            point.y >= rect.position.y && point.y <= rect.position.y + rect.size.y;
+
+    }
+
+    void ResetRun(std::vector <Level>& levels, Player& player, std::size_t& currentlevelindex, bool& gamewon, bool& gamelost, bool& jumpwasheld,
+        sf::RenderWindow& window)
+    {
+        levels = createLevels();
+        currentlevelindex = 0;
+        gamewon = false;
+        gamelost = false;
+        jumpwasheld = false;
+        PlacePlayerAtLevelSpawn(levels[currentlevelindex], player);
+        refreshabilitesforlevel(player, currentlevelindex);
+        window.setTitle(kWindowTitle);
+
+    }
+
 }
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode({kWindowWidth, kWindowHeight}), "Witch Potion Hunt");
+    sf::RenderWindow window(sf::VideoMode({kWindowWidth, kWindowHeight}), kWindowTitle);
     window.setFramerateLimit(60);
 
     std::vector<Level> levels = createLevels();
     Player             player;
     std::size_t        currentLevelIndex = 0;
     bool               gameWon = false;
+    bool               gameLost = false;
     bool               jumpwasheld = false;
 
 
@@ -43,17 +74,37 @@ int main()
                 window.close();
             }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+            if (const auto* KeyPressed = event->getIf<sf::Event::KeyPressed>())
             {
-                window.close();
+                if (KeyPressed->code == sf::Keyboard::Key::Escape)
+                {
+                    window.close();
+                }
+                if (gameLost && KeyPressed->code == sf::Keyboard::Key::R || KeyPressed->code == sf::Keyboard::Key::Enter)
+                {
+                    ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+
+                }
+                if (gameLost)
+                {
+                    if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
+                    {
+                        const sf::Vector2f clickposition(static_cast<float>(mousepressed->position.x), static_cast<float>(mousepressed->position.y));
+                        if (IsPointInside(GetRestartButtonBounds(), clickposition))
+                        {
+                            ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+                        }
+                    }
+                }
             }
+            
         }
 
         window.clear(sf::Color(24, 28, 36));
 
          Level& currentLevel = levels[currentLevelIndex];
 
-        if (!gameWon)
+        if (!gameWon && !gameLost)
         {
             updateclimbwallcontact(player, currentLevel);
             const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
@@ -124,23 +175,33 @@ int main()
             player.position.x =
                 std::clamp(player.position.x, 0.f, static_cast<float>(kWindowWidth) - player.size.x);
 
-            const bool PortalReady = allIngredientsCollected(currentLevel);
-            if (PortalReady && getPlayerBounds(player).findIntersection(currentLevel.cauldronArea))
+            
+            if (player.position.y > kDeathThresholdY)
             {
-                currentLevelIndex++;
-                if (currentLevelIndex >= levels.size())
+                gameLost = true;
+                jumpwasheld = false;
+                player.velocity = { 0.0f, 0.0f };
+                window.setTitle("Witch Potion Hunt - You Died! Click the Restart Button or Press 'R'");
+            }
+            else
+            {
+                const bool PortalReady = allIngredientsCollected(currentLevel);
+                if (PortalReady && getPlayerBounds(player).findIntersection(currentLevel.cauldronArea))
                 {
-                    currentLevelIndex = levels.size() - 1;
-                    gameWon = true;
+                    currentLevelIndex++;
+                    if (currentLevelIndex >= levels.size())
+                    {
+                        currentLevelIndex = levels.size() - 1;
+                        gameWon = true;
 
-                }
-                else
-                {
-                    PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
-                    refreshabilitesforlevel(player, currentLevelIndex);
+                    }
+                    else
+                    {
+                        PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
+                        refreshabilitesforlevel(player, currentLevelIndex);
 
+                    }
                 }
-                   
             }
 
         }
@@ -187,6 +248,18 @@ int main()
         drawCauldron(window, levelToDraw,PortalReady);
         drawPlayer(window, player);
         drawHud(window, levelToDraw, player);
+        if(gameLost)
+            if (gameLost)
+            {
+                const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+                const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
+                    static_cast<float>(mousePosition.y));
+                const sf::FloatRect restartButtonBounds = GetRestartButtonBounds();
+                drawRestartOverlay(window,
+                    restartButtonBounds,
+                    IsPointInside(restartButtonBounds, mousePoint));
+            }
+
         window.display();
     }
 }

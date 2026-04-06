@@ -82,3 +82,157 @@ inline void drawCauldron(sf::RenderWindow& window, const Level& level, bool read
         window.draw(bubble);
     }
 }
+
+inline const char* getBlockLetterPattern(char letter)
+{
+    switch (letter)
+    {
+    case 'A':
+        return " XXX "
+            "X   X"
+            "X   X"
+            "XXXXX"
+            "X   X"
+            "X   X"
+            "X   X";
+    case 'E':
+        return "XXXXX"
+            "X    "
+            "X    "
+            "XXXX "
+            "X    "
+            "X    "
+            "XXXXX";
+    case 'R':
+        return "XXXX "
+            "X   X"
+            "X   X"
+            "XXXX "
+            "X X  "
+            "X  X "
+            "X   X";
+    case 'S':
+        return " XXXX"
+            "X    "
+            "X    "
+            " XXX "
+            "    X"
+            "    X"
+            "XXXX ";
+    case 'T':
+        return "XXXXX"
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  ";
+    default:
+        return "     "
+            "     "
+            "     "
+            "     "
+            "     "
+            "     "
+            "     ";
+    }
+}
+
+inline void drawBlockLetter(sf::RenderWindow& window,
+    char letter,
+    sf::Vector2f topLeft,
+    float pixelSize,
+    sf::Color color)
+{
+    const char* pattern = getBlockLetterPattern(letter);
+
+    for (int row = 0; row < 7; ++row)
+    {
+        for (int column = 0; column < 5; ++column)
+        {
+            if (pattern[row * 5 + column] == ' ')
+            {
+                continue;
+            }
+
+            sf::RectangleShape pixel({ pixelSize, pixelSize });
+            pixel.setPosition(topLeft + sf::Vector2f(column * pixelSize, row * pixelSize));
+            pixel.setFillColor(color);
+            window.draw(pixel);
+        }
+    }
+}
+
+inline void drawBlockLabel(sf::RenderWindow& window,
+    std::string_view text,
+    sf::Vector2f topLeft,
+    float pixelSize,
+    float spacing,
+    sf::Color color)
+{
+    sf::Vector2f cursor = topLeft;
+    for (char letter : text)
+    {
+        if (letter == ' ')
+        {
+            cursor.x += 3.f * pixelSize;
+            continue;
+        }
+
+        drawBlockLetter(window, letter, cursor, pixelSize, color);
+        cursor.x += 5.f * pixelSize + spacing;
+    }
+}
+
+inline void drawRestartOverlay(sf::RenderWindow& window,
+    const sf::FloatRect& buttonBounds,
+    bool hovered)
+{
+    const sf::Vector2u windowSize = window.getSize();
+
+    sf::RectangleShape scrim({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
+    scrim.setFillColor(sf::Color(12, 12, 18, 180));
+    window.draw(scrim);
+
+    sf::RectangleShape panel({ 360.f, 220.f });
+    panel.setOrigin({ 180.f, 110.f });
+    panel.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
+    panel.setFillColor(sf::Color(46, 34, 30, 240));
+    panel.setOutlineThickness(4.f);
+    panel.setOutlineColor(sf::Color(156, 111, 72));
+    window.draw(panel);
+
+    sf::CircleShape potion(26.f);
+    potion.setOrigin({ 26.f, 26.f });
+    potion.setPosition(panel.getPosition() + sf::Vector2f(0.f, -42.f));
+    potion.setFillColor(sf::Color(167, 68, 68));
+    window.draw(potion);
+
+    sf::RectangleShape cork({ 18.f, 10.f });
+    cork.setOrigin({ 9.f, 5.f });
+    cork.setPosition(potion.getPosition() + sf::Vector2f(0.f, -28.f));
+    cork.setFillColor(sf::Color(130, 86, 48));
+    window.draw(cork);
+
+    sf::RectangleShape crack({ 8.f, 46.f });
+    crack.setOrigin({ 4.f, 23.f });
+    crack.setPosition(potion.getPosition());
+    crack.setRotation(sf::degrees(30.f));
+    crack.setFillColor(sf::Color(255, 230, 190));
+    window.draw(crack);
+
+    sf::RectangleShape button({ buttonBounds.size.x, buttonBounds.size.y });
+    button.setPosition(buttonBounds.position);
+    button.setFillColor(hovered ? sf::Color(92, 160, 109) : sf::Color(70, 129, 86));
+    button.setOutlineThickness(4.f);
+    button.setOutlineColor(sf::Color(212, 233, 190));
+    window.draw(button);
+
+    drawBlockLabel(window,
+        "RESTART",
+        buttonBounds.position + sf::Vector2f(31.f, 22.f),
+        4.f,
+        6.f,
+        sf::Color(236, 248, 230));
+}
+
