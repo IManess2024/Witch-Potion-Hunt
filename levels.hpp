@@ -19,7 +19,7 @@ inline void PlacePlayerAtLevelSpawn(const Level& level, Player& player)
 inline std::vector<Level> createLevels()
 {
     std::vector<Level> levels;
-
+    // level 1
     {
         Level level;
         level.backgroundColor = sf::Color(35, 28, 56);
@@ -38,7 +38,7 @@ inline std::vector<Level> createLevels()
 
         levels.push_back(level);
     }
-
+    // level 2
     {
         Level level;
         level.backgroundColor = sf::Color(23, 41, 68);
@@ -59,7 +59,7 @@ inline std::vector<Level> createLevels()
 
         levels.push_back(level);
     }
-
+    // level 3
     {
         Level level;
         level.backgroundColor = sf::Color(22, 52, 46);
@@ -84,7 +84,7 @@ inline std::vector<Level> createLevels()
         level.ingredients.push_back({{110.f, 545.f}, false});
         level.ingredients.push_back({{300.f, 400.f}, false});
         level.ingredients.push_back({{560.f, 270.f}, false});
-        level.ingredients.push_back({{840.f, 140.f}, false});
+        level.ingredients.push_back({{780.f, 140.f}, false});
 
         levels.push_back(level);
     }
