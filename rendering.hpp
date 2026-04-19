@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cmath>
 #include <string_view>
 
 #include "game_types.hpp"
@@ -121,6 +123,22 @@ inline const char* getBlockLetterPattern(char letter)
             "X   X"
             "X   X"
             "X   X";
+    case 'I':
+        return "XXXXX"
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  "
+            "XXXXX";
+    case 'N':
+        return "X   X"
+            "XX  X"
+            "X X X"
+            "X  XX"
+            "X   X"
+            "X   X"
+            "X   X";
     case 'O':
         return " XXX "
             "X   X"
@@ -160,6 +178,30 @@ inline const char* getBlockLetterPattern(char letter)
             "X   X"
             "X   X"
             " X X "
+            "  X  ";
+    case 'U':
+        return "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            " XXX ";
+    case 'W':
+        return "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X X X"
+            "XX XX"
+            "X   X";
+    case 'Y':
+        return "X   X"
+            "X   X"
+            " X X "
+            "  X  "
+            "  X  "
+            "  X  "
             "  X  ";
     default:
         return "     "
@@ -249,6 +291,35 @@ inline void drawCenteredBlockLabel(sf::RenderWindow& window,
     drawBlockLabel(window, text, { centerX - labelWidth * 0.5f, topY }, pixelSize, spacing, color);
 }
 
+inline void drawConfetti(sf::RenderWindow& window, float elapsedSeconds)
+{
+    const sf::Vector2u windowSize = window.getSize();
+    constexpr std::array<sf::Color, 6> colors = {
+        sf::Color(244, 92, 92),
+        sf::Color(255, 202, 76),
+        sf::Color(86, 205, 132),
+        sf::Color(91, 174, 255),
+        sf::Color(214, 116, 255),
+        sf::Color(255, 139, 83)
+    };
+
+    for (int index = 0; index < 90; ++index)
+    {
+        const float speed = 58.f + static_cast<float>((index % 7) * 15);
+        const float drift = std::sin(elapsedSeconds * 1.7f + static_cast<float>(index)) * 24.f;
+        const float x = std::fmod(static_cast<float>(index * 73), static_cast<float>(windowSize.x) + 120.f) - 60.f + drift;
+        const float y = std::fmod(static_cast<float>(index * 47) + elapsedSeconds * speed,
+            static_cast<float>(windowSize.y) + 140.f) - 70.f;
+
+        sf::RectangleShape confetti({ 10.f + static_cast<float>(index % 3) * 3.f, 5.f });
+        confetti.setOrigin({ confetti.getSize().x * 0.5f, confetti.getSize().y * 0.5f });
+        confetti.setPosition({ x, y });
+        confetti.setRotation(sf::degrees(std::fmod(elapsedSeconds * 120.f + static_cast<float>(index * 31), 360.f)));
+        confetti.setFillColor(colors[static_cast<std::size_t>(index) % colors.size()]);
+        window.draw(confetti);
+    }
+}
+
 inline void drawRestartOverlay(sf::RenderWindow& window,
     const sf::FloatRect& buttonBounds,
     bool hovered)
@@ -295,4 +366,71 @@ inline void drawRestartOverlay(sf::RenderWindow& window,
         4.f,
         6.f,
         sf::Color(236, 248, 230));
+}
+
+inline void drawWinOverlay(sf::RenderWindow& window,
+    const sf::FloatRect& buttonBounds,
+    bool hovered,
+    float elapsedSeconds)
+{
+    const sf::Vector2u windowSize = window.getSize();
+
+    sf::RectangleShape scrim({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
+    scrim.setFillColor(sf::Color(10, 18, 18, 185));
+    window.draw(scrim);
+
+    drawConfetti(window, elapsedSeconds);
+
+    sf::RectangleShape panel({ 500.f, 310.f });
+    panel.setOrigin({ 250.f, 155.f });
+    panel.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
+    panel.setFillColor(sf::Color(34, 49, 40, 245));
+    panel.setOutlineThickness(4.f);
+    panel.setOutlineColor(sf::Color(247, 200, 94));
+    window.draw(panel);
+
+    drawCenteredBlockLabel(window,
+        "YOU WIN",
+        panel.getPosition().x,
+        panel.getPosition().y - 104.f,
+        8.f,
+        8.f,
+        sf::Color(255, 220, 95));
+
+    sf::RectangleShape divider({ 320.f, 4.f });
+    divider.setOrigin({ 160.f, 2.f });
+    divider.setPosition(panel.getPosition() + sf::Vector2f(0.f, -22.f));
+    divider.setFillColor(sf::Color(112, 199, 131));
+    window.draw(divider);
+
+    sf::CircleShape sparkle(7.f, 4);
+    sparkle.setOrigin({ 7.f, 7.f });
+    sparkle.setFillColor(sf::Color(255, 238, 150));
+
+    sparkle.setPosition(panel.getPosition() + sf::Vector2f(-192.f, -95.f));
+    sparkle.setRotation(sf::degrees(45.f + elapsedSeconds * 90.f));
+    window.draw(sparkle);
+
+    sparkle.setPosition(panel.getPosition() + sf::Vector2f(195.f, -54.f));
+    sparkle.setRotation(sf::degrees(18.f + elapsedSeconds * 110.f));
+    window.draw(sparkle);
+
+    sparkle.setPosition(panel.getPosition() + sf::Vector2f(-158.f, 42.f));
+    sparkle.setRotation(sf::degrees(70.f + elapsedSeconds * 75.f));
+    window.draw(sparkle);
+
+    sf::RectangleShape button({ buttonBounds.size.x, buttonBounds.size.y });
+    button.setPosition(buttonBounds.position);
+    button.setFillColor(hovered ? sf::Color(97, 178, 119) : sf::Color(73, 146, 94));
+    button.setOutlineThickness(4.f);
+    button.setOutlineColor(sf::Color(236, 225, 153));
+    window.draw(button);
+
+    drawCenteredBlockLabel(window,
+        "RESTART",
+        buttonBounds.position.x + buttonBounds.size.x * 0.5f,
+        buttonBounds.position.y + 20.f,
+        4.f,
+        6.f,
+        sf::Color(246, 250, 225));
 }

@@ -28,6 +28,11 @@ namespace
 
     }
 
+    bool CanRestart(bool gamewon, bool gamelost)
+    {
+        return gamewon || gamelost;
+    }
+
     void ResetRun(std::vector <Level>& levels, Player& player, std::size_t& currentlevelindex, bool& gamewon, bool& gamelost, bool& jumpwasheld,
         sf::RenderWindow& window)
     {
@@ -55,6 +60,7 @@ int main()
     bool               gameWon = false;
     bool               gameLost = false;
     bool               jumpwasheld = false;
+    sf::Clock          effectClock;
 
 
     PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
@@ -79,15 +85,16 @@ int main()
                 {
                     window.close();
                 }
-                if (gameLost &&
+                if (CanRestart(gameWon, gameLost) &&
                     (KeyPressed->code == sf::Keyboard::Key::R ||
                         KeyPressed->code == sf::Keyboard::Key::Enter))
                 {
                     ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+                    effectClock.restart();
                 }
             }
 
-            if (gameLost)
+            if (CanRestart(gameWon, gameLost))
             {
                 if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
@@ -98,6 +105,7 @@ int main()
                         IsPointInside(GetRestartButtonBounds(), clickposition))
                     {
                         ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+                        effectClock.restart();
                     }
                 }
             }
@@ -197,6 +205,8 @@ int main()
                     {
                         currentLevelIndex = levels.size() - 1;
                         gameWon = true;
+                        effectClock.restart();
+                        window.setTitle("Witch Potion Hunt - You Win! Click the Restart Button or Press 'R'");
 
                     }
                     else
@@ -261,6 +271,17 @@ int main()
             drawRestartOverlay(window,
                 restartButtonBounds,
                 IsPointInside(restartButtonBounds, mousePoint));
+        }
+        else if (gameWon)
+        {
+            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
+                static_cast<float>(mousePosition.y));
+            const sf::FloatRect restartButtonBounds = GetRestartButtonBounds();
+            drawWinOverlay(window,
+                restartButtonBounds,
+                IsPointInside(restartButtonBounds, mousePoint),
+                effectClock.getElapsedTime().asSeconds());
         }
 
         window.display();
