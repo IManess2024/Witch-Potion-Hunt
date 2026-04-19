@@ -24,6 +24,30 @@ struct Ingredient
     bool         collected{false};
 };
 
+enum class MobType
+{
+    Bat,
+    Imp,
+    Golem
+};
+
+struct Mob
+{
+    MobType type{MobType::Bat};
+    sf::Vector2f position;
+    sf::Vector2f spawnPosition;
+    sf::Vector2f velocity;
+    sf::Vector2f size{36.f, 28.f};
+    float patrolMinX{0.f};
+    float patrolMaxX{0.f};
+    float baseY{0.f};
+    float phase{0.f};
+    int health{30};
+    int maxHealth{30};
+    bool alive{true};
+    bool facingRight{true};
+};
+
 struct Level
 {
     sf::Color                  backgroundColor;
@@ -32,4 +56,5 @@ struct Level
     std::vector<sf::FloatRect> solids;
     std::vector<sf::FloatRect> climbWalls;
     std::vector<Ingredient>    ingredients;
+    std::vector<Mob>           mobs;
 };

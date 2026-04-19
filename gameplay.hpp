@@ -17,6 +17,11 @@ inline sf::FloatRect getPlayerBounds(const Player& player)
     return sf::FloatRect(player.position, player.size);
 }
 
+inline sf::FloatRect getMobBounds(const Mob& mob)
+{
+    return sf::FloatRect(mob.position, mob.size);
+}
+
 inline bool allIngredientsCollected(const Level& level)
 {
     for (const Ingredient& ingredient : level.ingredients)

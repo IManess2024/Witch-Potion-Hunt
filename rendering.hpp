@@ -351,35 +351,219 @@ inline void drawHud(sf::RenderWindow& window, const Level& level, const Player& 
     window.draw(climbIcon);
 }
 
-inline void drawCauldron(sf::RenderWindow& window, const Level& level, bool readyForExit)
+inline void drawPortal(sf::RenderWindow& window,
+    const Level& level,
+    bool readyForExit,
+    std::size_t levelIndex,
+    float elapsedSeconds)
 {
-    sf::RectangleShape bowl({70.f, 38.f});
-    bowl.setPosition(level.cauldronArea.position + sf::Vector2f(0.f, 24.f));
-    bowl.setFillColor(readyForExit ? sf::Color(82, 204, 103) : sf::Color(70, 70, 70));
-    window.draw(bowl);
+    const sf::Vector2f center = level.cauldronArea.position + sf::Vector2f(level.cauldronArea.size.x * 0.5f, level.cauldronArea.size.y * 0.5f);
+    const float pulse = (std::sin(elapsedSeconds * 4.0f) + 1.0f) * 0.5f;
 
-    sf::RectangleShape leg({10.f, 18.f});
-    leg.setFillColor(sf::Color(45, 30, 20));
-
-    leg.setPosition(level.cauldronArea.position + sf::Vector2f(8.f, 60.f));
-    window.draw(leg);
-    leg.setPosition(level.cauldronArea.position + sf::Vector2f(52.f, 60.f));
-    window.draw(leg);
-
-    for (int bubbleIndex = 0; bubbleIndex < 3; ++bubbleIndex)
+    if (levelIndex == 0)
     {
-        sf::CircleShape bubble(7.f - static_cast<float>(bubbleIndex));
-        bubble.setFillColor(readyForExit ? sf::Color(170, 255, 190) : sf::Color(120, 120, 120));
-        bubble.setPosition(level.cauldronArea.position +
-                           sf::Vector2f(12.f + bubbleIndex * 18.f, 10.f - bubbleIndex * 8.f));
-        window.draw(bubble);
+        sf::CircleShape outer(42.0f, 7);
+        outer.setOrigin({ 42.0f, 42.0f });
+        outer.setPosition(center);
+        outer.setRotation(sf::degrees(elapsedSeconds * 20.0f));
+        outer.setFillColor(sf::Color(62, 38, 83, 230));
+        outer.setOutlineThickness(4.0f);
+        outer.setOutlineColor(readyForExit ? sf::Color(238, 196, 88) : sf::Color(106, 83, 115));
+        window.draw(outer);
+
+        sf::CircleShape inner(24.0f + pulse * 4.0f, 20);
+        inner.setOrigin({ inner.getRadius(), inner.getRadius() });
+        inner.setPosition(center);
+        inner.setFillColor(readyForExit ? sf::Color(151, 81, 220, 185) : sf::Color(63, 59, 68, 170));
+        window.draw(inner);
+
+        drawPixelRect(window, center + sf::Vector2f(-18.0f, 34.0f), { 36.0f, 9.0f }, sf::Color(58, 36, 51));
+        return;
     }
+
+    if (levelIndex == 1)
+    {
+        sf::ConvexShape crystal(6);
+        crystal.setPoint(0, { 0.0f, -48.0f });
+        crystal.setPoint(1, { 30.0f, -20.0f });
+        crystal.setPoint(2, { 24.0f, 30.0f });
+        crystal.setPoint(3, { 0.0f, 48.0f });
+        crystal.setPoint(4, { -24.0f, 30.0f });
+        crystal.setPoint(5, { -30.0f, -20.0f });
+        crystal.setPosition(center);
+        crystal.setFillColor(readyForExit ? sf::Color(87, 219, 238, 180) : sf::Color(76, 89, 101, 185));
+        crystal.setOutlineThickness(4.0f);
+        crystal.setOutlineColor(readyForExit ? sf::Color(213, 246, 255) : sf::Color(117, 134, 147));
+        window.draw(crystal);
+
+        drawPixelRect(window, center + sf::Vector2f(-7.0f, -35.0f), { 14.0f, 68.0f }, readyForExit ? sf::Color(179, 249, 255, 110) : sf::Color(120, 136, 147, 80));
+        drawPixelRect(window, center + sf::Vector2f(-34.0f, 42.0f), { 68.0f, 8.0f }, sf::Color(39, 56, 68));
+        return;
+    }
+
+    sf::CircleShape ring(46.0f, 28);
+    ring.setOrigin({ 46.0f, 46.0f });
+    ring.setPosition(center);
+    ring.setFillColor(sf::Color(21, 46, 33, 230));
+    ring.setOutlineThickness(7.0f);
+    ring.setOutlineColor(readyForExit ? sf::Color(82, 228, 112) : sf::Color(58, 100, 65));
+    window.draw(ring);
+
+    sf::CircleShape core(26.0f + pulse * 5.0f, 24);
+    core.setOrigin({ core.getRadius(), core.getRadius() });
+    core.setPosition(center);
+    core.setFillColor(readyForExit ? sf::Color(72, 210, 101, 165) : sf::Color(44, 69, 50, 150));
+    window.draw(core);
+
+    for (int root = 0; root < 5; ++root)
+    {
+        const float x = -38.0f + static_cast<float>(root) * 18.0f;
+        drawPixelRect(window, center + sf::Vector2f(x, 38.0f + static_cast<float>(root % 2) * 5.0f), { 24.0f, 6.0f }, sf::Color(42, 74, 43));
+    }
+}
+
+inline void drawMob(sf::RenderWindow& window, const Mob& mob, std::size_t levelIndex, float elapsedSeconds)
+{
+    if (!mob.alive)
+    {
+        return;
+    }
+
+    const float direction = mob.facingRight ? 1.0f : -1.0f;
+    const sf::Vector2f center = mob.position + mob.size * 0.5f;
+
+    if (mob.type == MobType::Bat)
+    {
+        const float flap = std::sin(elapsedSeconds * 14.0f + mob.phase) * 7.0f;
+        sf::CircleShape body(13.0f, 10);
+        body.setOrigin({ 13.0f, 13.0f });
+        body.setPosition(center);
+        body.setFillColor(levelIndex == 0 ? sf::Color(70, 41, 95) : sf::Color(39, 64, 90));
+        window.draw(body);
+
+        sf::ConvexShape wing(3);
+        wing.setFillColor(levelIndex == 0 ? sf::Color(104, 58, 139) : sf::Color(67, 104, 132));
+        wing.setPoint(0, center + sf::Vector2f(-8.0f, 0.0f));
+        wing.setPoint(1, center + sf::Vector2f(-30.0f, -8.0f - flap));
+        wing.setPoint(2, center + sf::Vector2f(-22.0f, 13.0f + flap * 0.3f));
+        window.draw(wing);
+        wing.setPoint(0, center + sf::Vector2f(8.0f, 0.0f));
+        wing.setPoint(1, center + sf::Vector2f(30.0f, -8.0f - flap));
+        wing.setPoint(2, center + sf::Vector2f(22.0f, 13.0f + flap * 0.3f));
+        window.draw(wing);
+
+        drawPixelRect(window, center + sf::Vector2f(direction * 4.0f - 2.0f, -4.0f), { 4.0f, 4.0f }, sf::Color(255, 76, 93));
+    }
+    else if (mob.type == MobType::Imp)
+    {
+        drawPixelRect(window, mob.position + sf::Vector2f(5.0f, 10.0f), { mob.size.x - 10.0f, mob.size.y - 8.0f }, sf::Color(166, 54, 67));
+        drawPixelRect(window, mob.position + sf::Vector2f(9.0f, 3.0f), { mob.size.x - 18.0f, 18.0f }, sf::Color(206, 74, 74));
+        drawPixelRect(window, mob.position + sf::Vector2f(direction > 0.0f ? 22.0f : 8.0f, 9.0f), { 5.0f, 4.0f }, sf::Color(255, 229, 91));
+        drawPixelRect(window, mob.position + sf::Vector2f(4.0f, 0.0f), { 8.0f, 8.0f }, sf::Color(92, 34, 49));
+        drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x - 12.0f, 0.0f), { 8.0f, 8.0f }, sf::Color(92, 34, 49));
+        drawPixelRect(window, mob.position + sf::Vector2f(7.0f, mob.size.y - 3.0f), { 7.0f, 7.0f }, sf::Color(51, 34, 44));
+        drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x - 14.0f, mob.size.y - 3.0f), { 7.0f, 7.0f }, sf::Color(51, 34, 44));
+    }
+    else
+    {
+        drawPixelRect(window, mob.position + sf::Vector2f(6.0f, 14.0f), { mob.size.x - 12.0f, mob.size.y - 16.0f }, sf::Color(75, 91, 77));
+        drawPixelRect(window, mob.position + sf::Vector2f(12.0f, 2.0f), { mob.size.x - 24.0f, 24.0f }, sf::Color(95, 116, 93));
+        drawPixelRect(window, mob.position + sf::Vector2f(direction > 0.0f ? 32.0f : 20.0f, 10.0f), { 7.0f, 6.0f }, sf::Color(139, 255, 132));
+        drawPixelRect(window, mob.position + sf::Vector2f(0.0f, 28.0f), { 13.0f, 24.0f }, sf::Color(63, 78, 64));
+        drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x - 13.0f, 28.0f), { 13.0f, 24.0f }, sf::Color(63, 78, 64));
+        drawPixelRect(window, mob.position + sf::Vector2f(10.0f, mob.size.y - 8.0f), { 15.0f, 8.0f }, sf::Color(42, 54, 45));
+        drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x - 25.0f, mob.size.y - 8.0f), { 15.0f, 8.0f }, sf::Color(42, 54, 45));
+    }
+
+    const float healthPercent = static_cast<float>(mob.health) / static_cast<float>(mob.maxHealth);
+    drawPixelRect(window, mob.position + sf::Vector2f(0.0f, -9.0f), { mob.size.x, 4.0f }, sf::Color(36, 24, 30, 170));
+    drawPixelRect(window, mob.position + sf::Vector2f(0.0f, -9.0f), { mob.size.x * healthPercent, 4.0f }, sf::Color(234, 70, 82, 220));
 }
 
 inline const char* getBlockLetterPattern(char letter)
 {
     switch (letter)
     {
+    case '0':
+        return " XXX "
+            "X   X"
+            "X  XX"
+            "X X X"
+            "XX  X"
+            "X   X"
+            " XXX ";
+    case '1':
+        return "  X  "
+            " XX  "
+            "  X  "
+            "  X  "
+            "  X  "
+            "  X  "
+            " XXX ";
+    case '2':
+        return " XXX "
+            "X   X"
+            "    X"
+            "   X "
+            "  X  "
+            " X   "
+            "XXXXX";
+    case '3':
+        return "XXXX "
+            "    X"
+            "    X"
+            " XXX "
+            "    X"
+            "    X"
+            "XXXX ";
+    case '4':
+        return "X   X"
+            "X   X"
+            "X   X"
+            "XXXXX"
+            "    X"
+            "    X"
+            "    X";
+    case '5':
+        return "XXXXX"
+            "X    "
+            "X    "
+            "XXXX "
+            "    X"
+            "    X"
+            "XXXX ";
+    case '6':
+        return " XXX "
+            "X    "
+            "X    "
+            "XXXX "
+            "X   X"
+            "X   X"
+            " XXX ";
+    case '7':
+        return "XXXXX"
+            "    X"
+            "   X "
+            "  X  "
+            " X   "
+            " X   "
+            " X   ";
+    case '8':
+        return " XXX "
+            "X   X"
+            "X   X"
+            " XXX "
+            "X   X"
+            "X   X"
+            " XXX ";
+    case '9':
+        return " XXX "
+            "X   X"
+            "X   X"
+            " XXXX"
+            "    X"
+            "    X"
+            " XXX ";
     case 'A':
         return " XXX "
             "X   X"

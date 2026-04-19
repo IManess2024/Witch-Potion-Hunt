@@ -3,8 +3,10 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
 #include "game_types.hpp"
@@ -54,6 +56,38 @@ namespace
         float lifetime{ 1.0f };
         float trailTimer{ 0.0f };
         float rotation{ 0.0f };
+    };
+
+    struct FloatingDamage
+    {
+        sf::Vector2f position;
+        sf::Vector2f velocity;
+        int value{ 0 };
+        float age{ 0.0f };
+        float lifetime{ 0.8f };
+        sf::Color color{ sf::Color::White };
+    };
+
+    enum class SoundEffect
+    {
+        StarBolt,
+        MoonFlame,
+        CrystalCharge,
+        CrystalExplosion,
+        Hit,
+        MobDefeat,
+        Collect,
+        Portal,
+        Hurt,
+        Jump,
+        Music
+    };
+
+    struct GameAudio
+    {
+        std::array<sf::SoundBuffer, 11> buffers;
+        std::vector<sf::Sound> activeSounds;
+        std::optional<sf::Sound> music;
     };
 
     sf::FloatRect GetRestartButtonBounds()
@@ -109,10 +143,150 @@ namespace
         return "STAR BOLT";
     }
 
+    std::size_t GetSoundIndex(SoundEffect effect)
+    {
+        return static_cast<std::size_t>(effect);
+    }
+
+    int GetSpellDamage(SpellType spell)
+    {
+        switch (spell)
+        {
+        case SpellType::StarBolt:
+            return 30;
+        case SpellType::MoonFlame:
+            return 7;
+        case SpellType::CrystalBloom:
+            return 42;
+        }
+
+        return 30;
+    }
+
     float SeededUnitValue(int seed)
     {
         const float value = std::sin(static_cast<float>(seed) * 12.9898f) * 43758.5453f;
         return value - std::floor(value);
+    }
+
+    std::vector<std::int16_t> MakeTone(float startFrequency, float endFrequency, float duration, float volume, bool noise)
+    {
+        constexpr unsigned int kSampleRate = 44100;
+        const std::size_t sampleCount = static_cast<std::size_t>(duration * static_cast<float>(kSampleRate));
+        std::vector<std::int16_t> samples(sampleCount);
+        float phase = 0.0f;
+
+        for (std::size_t index = 0; index < sampleCount; ++index)
+        {
+            const float t = static_cast<float>(index) / static_cast<float>(sampleCount);
+            const float frequency = startFrequency + (endFrequency - startFrequency) * t;
+            phase += frequency / static_cast<float>(kSampleRate);
+            const float envelope = std::sin(t * kPi) * (1.0f - t * 0.35f);
+            const float noiseValue = noise ? (SeededUnitValue(static_cast<int>(index) + 17) * 2.0f - 1.0f) * 0.35f : 0.0f;
+            const float wave = std::sin(phase * kPi * 2.0f) * 0.75f + std::sin(phase * kPi * 4.0f) * 0.25f + noiseValue;
+            samples[index] = static_cast<std::int16_t>(std::clamp(wave * envelope * volume, -1.0f, 1.0f) * 32767.0f);
+        }
+
+        return samples;
+    }
+
+    std::vector<std::int16_t> MakeBackgroundMusic()
+    {
+        constexpr unsigned int kSampleRate = 44100;
+        constexpr float kDuration = 10.0f;
+        const std::array<float, 8> notes = { 220.0f, 261.63f, 329.63f, 392.0f, 329.63f, 293.66f, 246.94f, 196.0f };
+        const std::size_t sampleCount = static_cast<std::size_t>(kDuration * static_cast<float>(kSampleRate));
+        std::vector<std::int16_t> samples(sampleCount);
+        float melodyPhase = 0.0f;
+        float bassPhase = 0.0f;
+
+        for (std::size_t index = 0; index < sampleCount; ++index)
+        {
+            const float time = static_cast<float>(index) / static_cast<float>(kSampleRate);
+            const std::size_t noteIndex = static_cast<std::size_t>(time * 2.0f) % notes.size();
+            const float localBeat = std::fmod(time * 2.0f, 1.0f);
+            const float melodyFrequency = notes[noteIndex];
+            const float bassFrequency = notes[(noteIndex + 5) % notes.size()] * 0.5f;
+            melodyPhase += melodyFrequency / static_cast<float>(kSampleRate);
+            bassPhase += bassFrequency / static_cast<float>(kSampleRate);
+
+            const float pluckEnvelope = std::exp(-localBeat * 3.4f) * 0.75f + 0.18f;
+            const float fadeIn = std::min(time / 1.4f, 1.0f);
+            const float fadeOut = std::min((kDuration - time) / 1.4f, 1.0f);
+            const float loopEnvelope = std::min(fadeIn, fadeOut);
+            const float melody = std::sin(melodyPhase * kPi * 2.0f) * 0.55f +
+                std::sin(melodyPhase * kPi * 4.0f) * 0.18f;
+            const float bass = std::sin(bassPhase * kPi * 2.0f) * 0.22f;
+            const float shimmer = std::sin((melodyPhase * 3.0f + bassPhase) * kPi * 2.0f) * 0.08f;
+            const float wave = (melody * pluckEnvelope + bass + shimmer) * loopEnvelope * 0.16f;
+            samples[index] = static_cast<std::int16_t>(std::clamp(wave, -1.0f, 1.0f) * 32767.0f);
+        }
+
+        return samples;
+    }
+
+    void LoadGeneratedSound(sf::SoundBuffer& buffer, float startFrequency, float endFrequency, float duration, float volume, bool noise)
+    {
+        const std::vector<std::int16_t> samples = MakeTone(startFrequency, endFrequency, duration, volume, noise);
+        const bool loaded = buffer.loadFromSamples(samples.data(), samples.size(), 1, 44100, { sf::SoundChannel::Mono });
+        (void)loaded;
+    }
+
+    void LoadGeneratedMusic(sf::SoundBuffer& buffer)
+    {
+        const std::vector<std::int16_t> samples = MakeBackgroundMusic();
+        const bool loaded = buffer.loadFromSamples(samples.data(), samples.size(), 1, 44100, { sf::SoundChannel::Mono });
+        (void)loaded;
+    }
+
+    GameAudio CreateGameAudio()
+    {
+        GameAudio audio;
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::StarBolt)], 880.0f, 1560.0f, 0.16f, 0.33f, false);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::MoonFlame)], 420.0f, 760.0f, 0.08f, 0.24f, true);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::CrystalCharge)], 260.0f, 540.0f, 0.24f, 0.25f, false);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::CrystalExplosion)], 150.0f, 80.0f, 0.34f, 0.36f, true);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::Hit)], 320.0f, 190.0f, 0.08f, 0.24f, true);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::MobDefeat)], 620.0f, 120.0f, 0.28f, 0.32f, true);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::Collect)], 720.0f, 1320.0f, 0.16f, 0.28f, false);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::Portal)], 260.0f, 980.0f, 0.5f, 0.28f, false);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::Hurt)], 180.0f, 70.0f, 0.24f, 0.34f, true);
+        LoadGeneratedSound(audio.buffers[GetSoundIndex(SoundEffect::Jump)], 360.0f, 760.0f, 0.12f, 0.22f, false);
+        LoadGeneratedMusic(audio.buffers[GetSoundIndex(SoundEffect::Music)]);
+        return audio;
+    }
+
+    void StartBackgroundMusic(GameAudio& audio)
+    {
+        audio.music.emplace(audio.buffers[GetSoundIndex(SoundEffect::Music)]);
+        audio.music->setLooping(true);
+        audio.music->setVolume(18.0f);
+        audio.music->play();
+    }
+
+    void PlaySound(GameAudio& audio, SoundEffect effect, float volume = 45.0f)
+    {
+        constexpr std::size_t kMaxActiveSounds = 24;
+        if (audio.activeSounds.size() >= kMaxActiveSounds)
+        {
+            audio.activeSounds.erase(audio.activeSounds.begin());
+        }
+
+        audio.activeSounds.emplace_back(audio.buffers[GetSoundIndex(effect)]);
+        audio.activeSounds.back().setVolume(volume);
+        audio.activeSounds.back().play();
+    }
+
+    void UpdateAudio(GameAudio& audio)
+    {
+        audio.activeSounds.erase(
+            std::remove_if(audio.activeSounds.begin(),
+                audio.activeSounds.end(),
+                [](const sf::Sound& sound)
+                {
+                    return sound.getStatus() == sf::SoundSource::Status::Stopped;
+                }),
+            audio.activeSounds.end());
     }
 
     void AddParticle(std::vector<MagicParticle>& particles,
@@ -295,38 +469,39 @@ namespace
     {
         const sf::Vector2f perpendicular(-direction.y, direction.x);
         const sf::Color primaryColor = spell == SpellType::StarBolt
-            ? sf::Color(255, 235, 110, 235)
-            : (spell == SpellType::MoonFlame ? sf::Color(104, 234, 223, 225) : sf::Color(255, 128, 230, 230));
+            ? sf::Color(255, 250, 164, 245)
+            : (spell == SpellType::MoonFlame ? sf::Color(70, 255, 209, 225) : sf::Color(255, 82, 231, 235));
         const sf::Color secondaryColor = spell == SpellType::StarBolt
-            ? sf::Color(116, 218, 255, 220)
-            : (spell == SpellType::MoonFlame ? sf::Color(159, 113, 255, 220) : sf::Color(140, 228, 255, 220));
+            ? sf::Color(80, 185, 255, 225)
+            : (spell == SpellType::MoonFlame ? sf::Color(45, 158, 255, 200) : sf::Color(255, 218, 112, 220));
+        const int particleCount = spell == SpellType::MoonFlame ? 9 : (spell == SpellType::CrystalBloom ? 26 : 22);
 
-        for (int index = 0; index < 18; ++index)
+        for (int index = 0; index < particleCount; ++index)
         {
-            const float spread = (SeededUnitValue(particleSeed + index) - 0.5f) * 130.0f;
-            const float speed = 45.0f + SeededUnitValue(particleSeed + index + 9) * 90.0f;
+            const float spread = (SeededUnitValue(particleSeed + index) - 0.5f) * (spell == SpellType::MoonFlame ? 86.0f : 150.0f);
+            const float speed = 45.0f + SeededUnitValue(particleSeed + index + 9) * (spell == SpellType::StarBolt ? 145.0f : 90.0f);
             const sf::Vector2f velocity = direction * speed + perpendicular * spread;
 
             AddParticle(particles,
                 position,
                 velocity,
                 index % 2 == 0 ? primaryColor : secondaryColor,
-                0.45f,
-                3.5f + SeededUnitValue(particleSeed + index + 17) * 2.5f,
+                spell == SpellType::CrystalBloom ? 0.7f : 0.45f,
+                (spell == SpellType::MoonFlame ? 2.2f : 3.5f) + SeededUnitValue(particleSeed + index + 17) * 2.5f,
                 ParticleKind::Spark);
         }
 
-        particleSeed += 18;
+        particleSeed += particleCount;
     }
 
     void SpawnSpellImpactBurst(std::vector<MagicParticle>& particles, SpellType spell, sf::Vector2f position, int& particleSeed)
     {
-        const int particleCount = spell == SpellType::CrystalBloom ? 58 : 38;
+        const int particleCount = spell == SpellType::CrystalBloom ? 96 : (spell == SpellType::StarBolt ? 48 : 24);
         for (int index = 0; index < particleCount; ++index)
         {
             const float t = static_cast<float>(index) / static_cast<float>(particleCount);
             const float angle = t * kPi * 2.0f;
-            const float speed = 90.0f + SeededUnitValue(particleSeed + index) * (spell == SpellType::CrystalBloom ? 170.0f : 115.0f);
+            const float speed = 90.0f + SeededUnitValue(particleSeed + index) * (spell == SpellType::CrystalBloom ? 230.0f : 115.0f);
             const sf::Vector2f direction(std::cos(angle), std::sin(angle));
             const sf::Color color = spell == SpellType::StarBolt
                 ? (index % 3 == 0 ? sf::Color(255, 242, 116, 235) : (index % 3 == 1 ? sf::Color(109, 218, 255, 225) : sf::Color(255, 112, 213, 220)))
@@ -338,9 +513,37 @@ namespace
                 position + direction * 8.0f,
                 direction * speed + sf::Vector2f(0.0f, -30.0f),
                 color,
-                spell == SpellType::MoonFlame ? 0.8f : 0.65f,
-                spell == SpellType::CrystalBloom ? 5.0f : 4.0f,
-                ParticleKind::Spark);
+                spell == SpellType::CrystalBloom ? 1.05f : (spell == SpellType::MoonFlame ? 0.52f : 0.65f),
+                spell == SpellType::CrystalBloom ? 6.5f : 4.0f,
+                spell == SpellType::CrystalBloom && index % 4 == 0 ? ParticleKind::Puff : ParticleKind::Spark);
+        }
+
+        particleSeed += particleCount;
+    }
+
+    void SpawnMobDefeatBurst(std::vector<MagicParticle>& particles, const Mob& mob, int& particleSeed)
+    {
+        const sf::Vector2f center = mob.position + mob.size * 0.5f;
+        const int particleCount = mob.type == MobType::Golem ? 72 : 44;
+        for (int index = 0; index < particleCount; ++index)
+        {
+            const float t = static_cast<float>(index) / static_cast<float>(particleCount);
+            const float angle = t * kPi * 2.0f;
+            const sf::Vector2f direction(std::cos(angle), std::sin(angle));
+            const float speed = 70.0f + SeededUnitValue(particleSeed + index) * 155.0f;
+            const sf::Color color = mob.type == MobType::Bat
+                ? (index % 2 == 0 ? sf::Color(166, 91, 224, 220) : sf::Color(255, 80, 110, 210))
+                : (mob.type == MobType::Imp
+                    ? (index % 2 == 0 ? sf::Color(255, 88, 80, 225) : sf::Color(255, 203, 82, 210))
+                    : (index % 2 == 0 ? sf::Color(120, 255, 130, 220) : sf::Color(112, 135, 116, 210)));
+
+            AddParticle(particles,
+                center + direction * 8.0f,
+                direction * speed + sf::Vector2f(0.0f, -40.0f),
+                color,
+                mob.type == MobType::Golem ? 0.95f : 0.72f,
+                mob.type == MobType::Golem ? 6.0f : 4.5f,
+                mob.type == MobType::Golem && index % 3 == 0 ? ParticleKind::Puff : ParticleKind::Spark);
         }
 
         particleSeed += particleCount;
@@ -350,66 +553,69 @@ namespace
     {
         if (spell.type == SpellType::StarBolt)
         {
-            constexpr std::array<sf::Color, 5> colors = {
-                sf::Color(255, 239, 101, 215),
-                sf::Color(255, 108, 211, 210),
-                sf::Color(98, 218, 255, 210),
-                sf::Color(138, 245, 155, 205),
-                sf::Color(188, 126, 255, 210)
+            constexpr std::array<sf::Color, 6> colors = {
+                sf::Color(255, 249, 135, 230),
+                sf::Color(255, 126, 217, 220),
+                sf::Color(77, 204, 255, 220),
+                sf::Color(116, 255, 167, 215),
+                sf::Color(191, 135, 255, 220),
+                sf::Color(255, 255, 255, 235)
             };
 
-            for (int index = 0; index < 3; ++index)
+            for (int index = 0; index < 6; ++index)
             {
                 const sf::Vector2f jitter(
-                    (SeededUnitValue(particleSeed + index) - 0.5f) * 16.0f,
-                    (SeededUnitValue(particleSeed + index + 7) - 0.5f) * 16.0f);
+                    (SeededUnitValue(particleSeed + index) - 0.5f) * 22.0f,
+                    (SeededUnitValue(particleSeed + index + 7) - 0.5f) * 22.0f);
                 AddParticle(particles,
                     spell.position + jitter,
-                    -NormalizeVector(spell.velocity) * (35.0f + SeededUnitValue(particleSeed + index + 13) * 35.0f),
+                    -NormalizeVector(spell.velocity) * (55.0f + SeededUnitValue(particleSeed + index + 13) * 85.0f),
                     colors[static_cast<std::size_t>(particleSeed + index) % colors.size()],
-                    0.5f,
-                    3.0f,
+                    0.62f,
+                    3.0f + static_cast<float>(index % 3),
                     ParticleKind::Spark);
             }
-            particleSeed += 3;
+            particleSeed += 6;
             return;
         }
 
         if (spell.type == SpellType::MoonFlame)
         {
-            for (int index = 0; index < 4; ++index)
+            for (int index = 0; index < 3; ++index)
             {
-                const sf::Color color = index % 2 == 0 ? sf::Color(99, 235, 218, 170) : sf::Color(151, 112, 255, 165);
+                const sf::Color color = index % 2 == 0 ? sf::Color(71, 255, 203, 185) : sf::Color(63, 142, 255, 165);
                 const sf::Vector2f jitter(
-                    (SeededUnitValue(particleSeed + index) - 0.5f) * 24.0f,
-                    (SeededUnitValue(particleSeed + index + 11) - 0.5f) * 24.0f);
+                    (SeededUnitValue(particleSeed + index) - 0.5f) * 16.0f,
+                    (SeededUnitValue(particleSeed + index + 11) - 0.5f) * 16.0f);
                 AddParticle(particles,
                     spell.position + jitter,
-                    sf::Vector2f((SeededUnitValue(particleSeed + index + 19) - 0.5f) * 38.0f, -28.0f),
+                    sf::Vector2f((SeededUnitValue(particleSeed + index + 19) - 0.5f) * 62.0f, -18.0f),
                     color,
-                    0.72f,
-                    6.0f + SeededUnitValue(particleSeed + index + 23) * 4.0f,
+                    0.38f,
+                    3.5f + SeededUnitValue(particleSeed + index + 23) * 3.0f,
                     ParticleKind::Puff);
             }
-            particleSeed += 4;
+            particleSeed += 3;
             return;
         }
 
-        for (int index = 0; index < 3; ++index)
+        for (int index = 0; index < 6; ++index)
         {
-            const sf::Color color = index % 2 == 0 ? sf::Color(255, 125, 233, 210) : sf::Color(128, 228, 255, 205);
+            const sf::Color color = index % 3 == 0
+                ? sf::Color(255, 94, 232, 220)
+                : (index % 3 == 1 ? sf::Color(128, 228, 255, 205) : sf::Color(255, 224, 102, 210));
             const sf::Vector2f jitter(
-                (SeededUnitValue(particleSeed + index) - 0.5f) * 18.0f,
-                (SeededUnitValue(particleSeed + index + 7) - 0.5f) * 18.0f);
+                (SeededUnitValue(particleSeed + index) - 0.5f) * 30.0f,
+                (SeededUnitValue(particleSeed + index + 7) - 0.5f) * 30.0f);
             AddParticle(particles,
                 spell.position + jitter,
-                -NormalizeVector(spell.velocity) * (28.0f + SeededUnitValue(particleSeed + index + 17) * 45.0f),
+                -NormalizeVector(spell.velocity) * (20.0f + SeededUnitValue(particleSeed + index + 17) * 36.0f),
                 color,
-                0.58f,
-                3.5f,
+                0.85f,
+                4.0f + SeededUnitValue(particleSeed + index + 25) * 3.5f,
                 ParticleKind::Spark);
         }
-        particleSeed += 3;
+        particleSeed += 6;
     }
 
     void CastSpell(std::vector<SpellProjectile>& spells,
@@ -417,9 +623,10 @@ namespace
         const Player& player,
         SpellType activeSpell,
         sf::Vector2f target,
-        int& particleSeed)
+        int& particleSeed,
+        GameAudio& audio)
     {
-        constexpr std::size_t kMaxSpells = 18;
+        constexpr std::size_t kMaxSpells = 36;
         if (spells.size() >= kMaxSpells)
         {
             spells.erase(spells.begin());
@@ -428,14 +635,19 @@ namespace
         const sf::Vector2f startPosition = GetMagicStickTip(player);
         const sf::Vector2f direction = NormalizeVector(target - startPosition);
         const float speed = activeSpell == SpellType::StarBolt
-            ? 620.0f
-            : (activeSpell == SpellType::MoonFlame ? 360.0f : 470.0f);
+            ? 980.0f
+            : (activeSpell == SpellType::MoonFlame ? 740.0f : 250.0f);
         const float lifetime = activeSpell == SpellType::StarBolt
-            ? 0.82f
-            : (activeSpell == SpellType::MoonFlame ? 1.25f : 0.95f);
+            ? 1.7f
+            : (activeSpell == SpellType::MoonFlame ? 0.48f : 1.05f);
 
         spells.push_back({ activeSpell, startPosition, direction * speed, 0.0f, lifetime, 0.0f, 0.0f });
         SpawnSpellCastBurst(particles, activeSpell, startPosition, direction, particleSeed);
+        PlaySound(audio,
+            activeSpell == SpellType::StarBolt
+                ? SoundEffect::StarBolt
+                : (activeSpell == SpellType::MoonFlame ? SoundEffect::MoonFlame : SoundEffect::CrystalCharge),
+            activeSpell == SpellType::MoonFlame ? 24.0f : 42.0f);
     }
 
     void UpdateSpells(std::vector<SpellProjectile>& spells, std::vector<MagicParticle>& particles, float dt, int& particleSeed)
@@ -444,17 +656,17 @@ namespace
         {
             spell.age += dt;
             spell.trailTimer += dt;
-            spell.rotation += dt * (spell.type == SpellType::MoonFlame ? 120.0f : 260.0f);
+            spell.rotation += dt * (spell.type == SpellType::MoonFlame ? 520.0f : (spell.type == SpellType::CrystalBloom ? 120.0f : 360.0f));
 
             sf::Vector2f velocity = spell.velocity;
             if (spell.type == SpellType::MoonFlame)
             {
                 const sf::Vector2f perpendicular(-NormalizeVector(spell.velocity).y, NormalizeVector(spell.velocity).x);
-                velocity += perpendicular * std::sin(spell.age * 12.0f) * 95.0f;
+                velocity += perpendicular * std::sin(spell.age * 30.0f) * 75.0f;
             }
             else if (spell.type == SpellType::CrystalBloom)
             {
-                velocity *= 0.92f + std::sin(spell.age * 9.0f) * 0.06f;
+                velocity *= std::max(0.12f, 1.0f - spell.age * 0.8f);
             }
 
             spell.position += velocity * dt;
@@ -467,7 +679,7 @@ namespace
 
         for (const SpellProjectile& spell : spells)
         {
-            if (spell.age >= spell.lifetime)
+            if (spell.age >= spell.lifetime && spell.type != SpellType::CrystalBloom)
             {
                 SpawnSpellImpactBurst(particles, spell.type, spell.position, particleSeed);
             }
@@ -478,9 +690,219 @@ namespace
                 spells.end(),
                 [](const SpellProjectile& spell)
                 {
-                    return spell.age >= spell.lifetime;
+                    return spell.age >= spell.lifetime && spell.type != SpellType::CrystalBloom;
                 }),
             spells.end());
+    }
+
+    void AddFloatingDamage(std::vector<FloatingDamage>& damageNumbers, sf::Vector2f position, int value, SpellType spell)
+    {
+        constexpr std::size_t kMaxDamageNumbers = 36;
+        if (damageNumbers.size() >= kMaxDamageNumbers)
+        {
+            damageNumbers.erase(damageNumbers.begin());
+        }
+
+        const sf::Color color = spell == SpellType::StarBolt
+            ? sf::Color(255, 236, 104)
+            : (spell == SpellType::MoonFlame ? sf::Color(107, 239, 225) : sf::Color(255, 126, 231));
+        damageNumbers.push_back({ position, { 0.0f, -52.0f }, value, 0.0f, 0.95f, color });
+    }
+
+    void UpdateFloatingDamage(std::vector<FloatingDamage>& damageNumbers, float dt)
+    {
+        for (FloatingDamage& damage : damageNumbers)
+        {
+            damage.age += dt;
+            damage.position += damage.velocity * dt;
+            damage.velocity.y += 20.0f * dt;
+        }
+
+        damageNumbers.erase(
+            std::remove_if(damageNumbers.begin(),
+                damageNumbers.end(),
+                [](const FloatingDamage& damage)
+                {
+                    return damage.age >= damage.lifetime;
+                }),
+            damageNumbers.end());
+    }
+
+    void DrawFloatingDamage(sf::RenderWindow& window, const std::vector<FloatingDamage>& damageNumbers)
+    {
+        for (const FloatingDamage& damage : damageNumbers)
+        {
+            const float progress = std::clamp(damage.age / damage.lifetime, 0.0f, 1.0f);
+            sf::Color shadow(22, 15, 24, static_cast<std::uint8_t>(210.0f * (1.0f - progress)));
+            sf::Color color = damage.color;
+            color.a = static_cast<std::uint8_t>(255.0f * (1.0f - progress));
+            const std::string text = std::to_string(damage.value);
+
+            drawCenteredBlockLabel(window, text, damage.position.x + 2.0f, damage.position.y + 2.0f, 3.0f, 4.0f, shadow);
+            drawCenteredBlockLabel(window, text, damage.position.x, damage.position.y, 3.0f, 4.0f, color);
+        }
+    }
+
+    void UpdateMobs(Level& level, const Player& player, float elapsedSeconds)
+    {
+        for (Mob& mob : level.mobs)
+        {
+            if (!mob.alive)
+            {
+                continue;
+            }
+
+            if (mob.type == MobType::Bat)
+            {
+                const float speed = 92.0f;
+                mob.position.x += (mob.facingRight ? speed : -speed) * kFrameSeconds;
+                if (mob.position.x < mob.patrolMinX)
+                {
+                    mob.position.x = mob.patrolMinX;
+                    mob.facingRight = true;
+                }
+                else if (mob.position.x + mob.size.x > mob.patrolMaxX)
+                {
+                    mob.position.x = mob.patrolMaxX - mob.size.x;
+                    mob.facingRight = false;
+                }
+
+                mob.position.y = mob.baseY + std::sin(elapsedSeconds * 3.2f + mob.phase) * 26.0f;
+            }
+            else if (mob.type == MobType::Imp)
+            {
+                const float speed = 155.0f;
+                mob.position.x += (mob.facingRight ? speed : -speed) * kFrameSeconds;
+                if (mob.position.x < mob.patrolMinX)
+                {
+                    mob.position.x = mob.patrolMinX;
+                    mob.facingRight = true;
+                }
+                else if (mob.position.x + mob.size.x > mob.patrolMaxX)
+                {
+                    mob.position.x = mob.patrolMaxX - mob.size.x;
+                    mob.facingRight = false;
+                }
+                mob.position.y = mob.baseY + std::abs(std::sin(elapsedSeconds * 8.0f + mob.phase)) * 4.0f;
+            }
+            else
+            {
+                const float playerCenterX = player.position.x + player.size.x * 0.5f;
+                const float mobCenterX = mob.position.x + mob.size.x * 0.5f;
+                const bool chasing = std::abs(playerCenterX - mobCenterX) < 260.0f;
+                const float speed = chasing ? 70.0f : 38.0f;
+                if (chasing)
+                {
+                    mob.facingRight = playerCenterX > mobCenterX;
+                }
+
+                mob.position.x += (mob.facingRight ? speed : -speed) * kFrameSeconds;
+                if (mob.position.x < mob.patrolMinX)
+                {
+                    mob.position.x = mob.patrolMinX;
+                    mob.facingRight = true;
+                }
+                else if (mob.position.x + mob.size.x > mob.patrolMaxX)
+                {
+                    mob.position.x = mob.patrolMaxX - mob.size.x;
+                    mob.facingRight = false;
+                }
+            }
+        }
+    }
+
+    void ResolveSpellMobHits(std::vector<SpellProjectile>& spells,
+        Level& level,
+        std::vector<MagicParticle>& particles,
+        std::vector<FloatingDamage>& damageNumbers,
+        int& particleSeed,
+        GameAudio& audio)
+    {
+        for (auto spell = spells.begin(); spell != spells.end();)
+        {
+            bool consumed = false;
+
+            if (spell->type == SpellType::CrystalBloom && spell->age >= spell->lifetime)
+            {
+                constexpr float kExplosionRadius = 112.0f;
+                SpawnSpellImpactBurst(particles, spell->type, spell->position, particleSeed);
+                PlaySound(audio, SoundEffect::CrystalExplosion, 52.0f);
+
+                for (Mob& mob : level.mobs)
+                {
+                    if (!mob.alive)
+                    {
+                        continue;
+                    }
+
+                    const sf::Vector2f mobCenter = mob.position + mob.size * 0.5f;
+                    const float distance = GetVectorLength(mobCenter - spell->position);
+                    if (distance > kExplosionRadius)
+                    {
+                        continue;
+                    }
+
+                    const int damage = GetSpellDamage(spell->type);
+                    mob.health -= damage;
+                    AddFloatingDamage(damageNumbers, mob.position + sf::Vector2f(mob.size.x * 0.5f, -12.0f), damage, spell->type);
+                    PlaySound(audio, SoundEffect::Hit, 32.0f);
+
+                    if (mob.health <= 0)
+                    {
+                        mob.alive = false;
+                        SpawnMobDefeatBurst(particles, mob, particleSeed);
+                        PlaySound(audio, SoundEffect::MobDefeat, 46.0f);
+                    }
+                }
+
+                spell = spells.erase(spell);
+                continue;
+            }
+
+            if (spell->type == SpellType::CrystalBloom)
+            {
+                ++spell;
+                continue;
+            }
+
+            const sf::FloatRect spellBounds(spell->position - sf::Vector2f(12.0f, 12.0f), { 24.0f, 24.0f });
+
+            for (Mob& mob : level.mobs)
+            {
+                if (!mob.alive || !spellBounds.findIntersection(getMobBounds(mob)))
+                {
+                    continue;
+                }
+
+                const int damage = GetSpellDamage(spell->type);
+                mob.health -= damage;
+                AddFloatingDamage(damageNumbers,
+                    mob.position + sf::Vector2f(mob.size.x * 0.5f, -12.0f),
+                    damage,
+                    spell->type);
+                SpawnSpellImpactBurst(particles, spell->type, spell->position, particleSeed);
+                PlaySound(audio, SoundEffect::Hit, 32.0f);
+
+                if (mob.health <= 0)
+                {
+                    mob.alive = false;
+                    SpawnMobDefeatBurst(particles, mob, particleSeed);
+                    PlaySound(audio, SoundEffect::MobDefeat, 46.0f);
+                }
+
+                consumed = true;
+                break;
+            }
+
+            if (consumed)
+            {
+                spell = spells.erase(spell);
+            }
+            else
+            {
+                ++spell;
+            }
+        }
     }
 
     void DrawSpellProjectiles(sf::RenderWindow& window, const std::vector<SpellProjectile>& spells)
@@ -489,16 +911,29 @@ namespace
         {
             if (spell.type == SpellType::StarBolt)
             {
-                sf::CircleShape glow(18.0f, 8);
-                glow.setOrigin({ 18.0f, 18.0f });
-                glow.setPosition(spell.position);
-                glow.setRotation(sf::degrees(spell.rotation));
-                glow.setFillColor(sf::Color(255, 228, 88, 120));
-                window.draw(glow);
+                const sf::Vector2f direction = NormalizeVector(spell.velocity);
+                const sf::Vector2f perpendicular(-direction.y, direction.x);
+                const sf::Vector2f tail = spell.position - direction * 46.0f;
+
+                sf::ConvexShape beam(4);
+                beam.setPoint(0, spell.position + direction * 18.0f);
+                beam.setPoint(1, tail + perpendicular * 9.0f);
+                beam.setPoint(2, tail - direction * 18.0f);
+                beam.setPoint(3, tail - perpendicular * 9.0f);
+                beam.setFillColor(sf::Color(255, 239, 92, 155));
+                window.draw(beam);
+
+                sf::ConvexShape coreBeam(4);
+                coreBeam.setPoint(0, spell.position + direction * 13.0f);
+                coreBeam.setPoint(1, tail + perpendicular * 3.0f);
+                coreBeam.setPoint(2, tail - direction * 8.0f);
+                coreBeam.setPoint(3, tail - perpendicular * 3.0f);
+                coreBeam.setFillColor(sf::Color(255, 255, 235, 245));
+                window.draw(coreBeam);
 
                 sf::CircleShape core(7.0f, 5);
                 core.setOrigin({ 7.0f, 7.0f });
-                core.setPosition(spell.position);
+                core.setPosition(spell.position + direction * 12.0f);
                 core.setRotation(sf::degrees(-spell.rotation * 1.4f));
                 core.setFillColor(sf::Color(255, 250, 205, 240));
                 window.draw(core);
@@ -506,28 +941,39 @@ namespace
             else if (spell.type == SpellType::MoonFlame)
             {
                 const float pulse = (std::sin(spell.age * 14.0f) + 1.0f) * 0.5f;
-                sf::CircleShape flame(17.0f + pulse * 5.0f, 18);
+                sf::CircleShape flame(8.0f + pulse * 3.0f, 14);
                 flame.setOrigin({ flame.getRadius(), flame.getRadius() });
                 flame.setPosition(spell.position);
-                flame.setFillColor(sf::Color(75, 228, 211, 170));
+                flame.setFillColor(sf::Color(53, 255, 197, 170));
                 window.draw(flame);
 
-                sf::CircleShape core(10.0f, 18);
-                core.setOrigin({ 10.0f, 10.0f });
+                sf::CircleShape core(4.0f, 8);
+                core.setOrigin({ 4.0f, 4.0f });
                 core.setPosition(spell.position + sf::Vector2f(std::sin(spell.age * 18.0f) * 4.0f, 0.0f));
-                core.setFillColor(sf::Color(161, 119, 255, 220));
+                core.setFillColor(sf::Color(217, 255, 242, 230));
                 window.draw(core);
             }
             else
             {
+                const float charge = std::clamp(spell.age / spell.lifetime, 0.0f, 1.0f);
+                const float pulse = (std::sin(spell.age * 18.0f) + 1.0f) * 0.5f;
+
+                sf::CircleShape warning(28.0f + charge * 34.0f, 32);
+                warning.setOrigin({ warning.getRadius(), warning.getRadius() });
+                warning.setPosition(spell.position);
+                warning.setFillColor(sf::Color(255, 84, 222, static_cast<std::uint8_t>(30.0f + charge * 70.0f)));
+                warning.setOutlineThickness(2.0f);
+                warning.setOutlineColor(sf::Color(255, 226, 112, static_cast<std::uint8_t>(90.0f + pulse * 80.0f)));
+                window.draw(warning);
+
                 sf::ConvexShape crystal(4);
-                crystal.setPoint(0, { 0.0f, -18.0f });
-                crystal.setPoint(1, { 14.0f, 0.0f });
-                crystal.setPoint(2, { 0.0f, 18.0f });
-                crystal.setPoint(3, { -14.0f, 0.0f });
+                crystal.setPoint(0, { 0.0f, -20.0f - pulse * 5.0f });
+                crystal.setPoint(1, { 16.0f + charge * 5.0f, 0.0f });
+                crystal.setPoint(2, { 0.0f, 20.0f + pulse * 5.0f });
+                crystal.setPoint(3, { -16.0f - charge * 5.0f, 0.0f });
                 crystal.setPosition(spell.position);
                 crystal.setRotation(sf::degrees(spell.rotation));
-                crystal.setFillColor(sf::Color(255, 126, 231, 205));
+                crystal.setFillColor(sf::Color(255, 96, 230, 220));
                 window.draw(crystal);
 
                 sf::CircleShape core(6.0f, 8);
@@ -654,17 +1100,33 @@ int main()
     bool               gameLost = false;
     bool               jumpwasheld = false;
     sf::Clock          effectClock;
+    GameAudio          audio = CreateGameAudio();
     std::vector<MagicParticle> magicParticles;
     std::vector<SpellProjectile> spellProjectiles;
+    std::vector<FloatingDamage> damageNumbers;
     SpellType          activeSpell = SpellType::StarBolt;
     int                particleSeed = 1;
     float              trailSpawnTimer = 0.0f;
     float              spellCooldown = 0.0f;
+    bool               castingHeld = false;
 
+    StartBackgroundMusic(audio);
 
     PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
 
     refreshabilitesforlevel(player, currentLevelIndex);
+
+    const auto keyMatches = [](const sf::Event::KeyPressed& keyPressed,
+                               sf::Keyboard::Key key,
+                               sf::Keyboard::Scancode scancode)
+    {
+        return keyPressed.code == key || keyPressed.scancode == scancode;
+    };
+
+    const auto isKeyHeld = [](sf::Keyboard::Key key, sf::Keyboard::Scancode scancode)
+    {
+        return sf::Keyboard::isKeyPressed(key) || sf::Keyboard::isKeyPressed(scancode);
+    };
 
 
 
@@ -680,38 +1142,40 @@ int main()
 
             if (const auto* KeyPressed = event->getIf<sf::Event::KeyPressed>())
             {
-                if (KeyPressed->code == sf::Keyboard::Key::Escape)
+                if (keyMatches(*KeyPressed, sf::Keyboard::Key::Escape, sf::Keyboard::Scan::Escape))
                 {
                     window.close();
                 }
                 if (!CanRestart(gameWon, gameLost))
                 {
-                    if (KeyPressed->code == sf::Keyboard::Key::Num1 ||
-                        KeyPressed->code == sf::Keyboard::Key::Numpad1)
+                    if (keyMatches(*KeyPressed, sf::Keyboard::Key::Num1, sf::Keyboard::Scan::Num1) ||
+                        keyMatches(*KeyPressed, sf::Keyboard::Key::Numpad1, sf::Keyboard::Scan::Numpad1))
                     {
                         activeSpell = SpellType::StarBolt;
                     }
-                    else if (KeyPressed->code == sf::Keyboard::Key::Num2 ||
-                        KeyPressed->code == sf::Keyboard::Key::Numpad2)
+                    else if (keyMatches(*KeyPressed, sf::Keyboard::Key::Num2, sf::Keyboard::Scan::Num2) ||
+                        keyMatches(*KeyPressed, sf::Keyboard::Key::Numpad2, sf::Keyboard::Scan::Numpad2))
                     {
                         activeSpell = SpellType::MoonFlame;
                     }
-                    else if (KeyPressed->code == sf::Keyboard::Key::Num3 ||
-                        KeyPressed->code == sf::Keyboard::Key::Numpad3)
+                    else if (keyMatches(*KeyPressed, sf::Keyboard::Key::Num3, sf::Keyboard::Scan::Num3) ||
+                        keyMatches(*KeyPressed, sf::Keyboard::Key::Numpad3, sf::Keyboard::Scan::Numpad3))
                     {
                         activeSpell = SpellType::CrystalBloom;
                     }
                 }
                 if (CanRestart(gameWon, gameLost) &&
-                    (KeyPressed->code == sf::Keyboard::Key::R ||
-                        KeyPressed->code == sf::Keyboard::Key::Enter))
+                    (keyMatches(*KeyPressed, sf::Keyboard::Key::R, sf::Keyboard::Scan::R) ||
+                        keyMatches(*KeyPressed, sf::Keyboard::Key::Enter, sf::Keyboard::Scan::Enter)))
                 {
                     ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
                     effectClock.restart();
                     magicParticles.clear();
                     spellProjectiles.clear();
+                    damageNumbers.clear();
                     trailSpawnTimer = 0.0f;
                     spellCooldown = 0.0f;
+                    castingHeld = false;
                 }
             }
 
@@ -729,30 +1193,35 @@ int main()
                         effectClock.restart();
                         magicParticles.clear();
                         spellProjectiles.clear();
+                        damageNumbers.clear();
                         trailSpawnTimer = 0.0f;
                         spellCooldown = 0.0f;
+                        castingHeld = false;
                     }
                 }
             }
             else if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
             {
-                if (mousepressed->button == sf::Mouse::Button::Left && spellCooldown <= 0.0f)
+                if (mousepressed->button == sf::Mouse::Button::Left)
                 {
-                    CastSpell(spellProjectiles,
-                        magicParticles,
-                        player,
-                        activeSpell,
-                        sf::Vector2f(static_cast<float>(mousepressed->position.x), static_cast<float>(mousepressed->position.y)),
-                        particleSeed);
-                    spellCooldown = activeSpell == SpellType::StarBolt ? 0.16f : 0.24f;
+                    castingHeld = true;
+                }
+            }
+            else if (const auto* mousereleased = event->getIf<sf::Event::MouseButtonReleased>())
+            {
+                if (mousereleased->button == sf::Mouse::Button::Left)
+                {
+                    castingHeld = false;
                 }
             }
             
         }
 
         window.clear(sf::Color(24, 28, 36));
+        UpdateAudio(audio);
         UpdateParticles(magicParticles, kFrameSeconds);
         UpdateSpells(spellProjectiles, magicParticles, kFrameSeconds, particleSeed);
+        UpdateFloatingDamage(damageNumbers, kFrameSeconds);
         if (spellCooldown > 0.0f)
         {
             spellCooldown = std::max(0.0f, spellCooldown - kFrameSeconds);
@@ -762,13 +1231,35 @@ int main()
 
         if (!gameWon && !gameLost)
         {
+            if (castingHeld && spellCooldown <= 0.0f)
+            {
+                const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+                CastSpell(spellProjectiles,
+                    magicParticles,
+                    player,
+                    activeSpell,
+                    sf::Vector2f(static_cast<float>(mousePosition.x), static_cast<float>(mousePosition.y)),
+                    particleSeed,
+                    audio);
+                spellCooldown = activeSpell == SpellType::StarBolt
+                    ? 0.25f
+                    : (activeSpell == SpellType::MoonFlame ? 0.028f : 0.42f);
+            }
+
             const bool wasOnGround = player.onGround;
+            UpdateMobs(currentLevel, player, effectClock.getElapsedTime().asSeconds());
+            ResolveSpellMobHits(spellProjectiles, currentLevel, magicParticles, damageNumbers, particleSeed, audio);
+
             updateclimbwallcontact(player, currentLevel);
-            const bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
-            const bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
-            const bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
-            const bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
-            const bool jumpheld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) || moveUp;
+            const bool moveLeft = isKeyHeld(sf::Keyboard::Key::A, sf::Keyboard::Scan::A) ||
+                isKeyHeld(sf::Keyboard::Key::Left, sf::Keyboard::Scan::Left);
+            const bool moveRight = isKeyHeld(sf::Keyboard::Key::D, sf::Keyboard::Scan::D) ||
+                isKeyHeld(sf::Keyboard::Key::Right, sf::Keyboard::Scan::Right);
+            const bool moveUp = isKeyHeld(sf::Keyboard::Key::W, sf::Keyboard::Scan::W) ||
+                isKeyHeld(sf::Keyboard::Key::Up, sf::Keyboard::Scan::Up);
+            const bool moveDown = isKeyHeld(sf::Keyboard::Key::S, sf::Keyboard::Scan::S) ||
+                isKeyHeld(sf::Keyboard::Key::Down, sf::Keyboard::Scan::Down);
+            const bool jumpheld = isKeyHeld(sf::Keyboard::Key::Space, sf::Keyboard::Scan::Space) || moveUp;
             const bool jumppressedthisframe = jumpheld && !jumpwasheld;
             jumpwasheld = jumpheld;
 
@@ -818,6 +1309,7 @@ int main()
                 if (jumpedThisFrame)
                 {
                     SpawnJumpBurst(magicParticles, player, usedDoubleJump, particleSeed);
+                    PlaySound(audio, SoundEffect::Jump, usedDoubleJump ? 34.0f : 28.0f);
                 }
             }
             const bool climbnow = player.canClimb && player.touchingClimbWall && (moveUp || moveDown);
@@ -869,6 +1361,7 @@ int main()
             for (const sf::Vector2f position : collectedIngredientPositions)
             {
                 SpawnCollectBurst(magicParticles, position, particleSeed);
+                PlaySound(audio, SoundEffect::Collect, 34.0f);
             }
 
             if (std::abs(player.velocity.x) > 1.0f && std::abs(horizontalInput) > 0.0f)
@@ -903,6 +1396,23 @@ int main()
             }
             else
             {
+                for (const Mob& mob : currentLevel.mobs)
+                {
+                    if (mob.alive && getPlayerBounds(player).findIntersection(getMobBounds(mob)))
+                    {
+                        gameLost = true;
+                        jumpwasheld = false;
+                        player.velocity = { 0.0f, 0.0f };
+                        SpawnLandingPuff(magicParticles, player, particleSeed);
+                        PlaySound(audio, SoundEffect::Hurt, 48.0f);
+                        window.setTitle("Witch Potion Hunt - A monster got you! Click the Restart Button or Press 'R'");
+                        break;
+                    }
+                }
+            }
+
+            if (!gameLost)
+            {
                 const bool PortalReady = allIngredientsCollected(currentLevel);
                 if (PortalReady && getPlayerBounds(player).findIntersection(currentLevel.cauldronArea))
                 {
@@ -912,10 +1422,13 @@ int main()
                         currentLevelIndex = levels.size() - 1;
                         gameWon = true;
                         effectClock.restart();
+                        PlaySound(audio, SoundEffect::Portal, 48.0f);
                         magicParticles.clear();
                         spellProjectiles.clear();
+                        damageNumbers.clear();
                         trailSpawnTimer = 0.0f;
                         spellCooldown = 0.0f;
+                        castingHeld = false;
                         window.setTitle("Witch Potion Hunt - You Win! Click the Restart Button or Press 'R'");
 
                     }
@@ -928,6 +1441,7 @@ int main()
                         refreshabilitesforlevel(player, currentLevelIndex);
                         trailSpawnTimer = 0.0f;
                         SpawnLevelTransitionBurst(magicParticles, player, particleSeed);
+                        PlaySound(audio, SoundEffect::Portal, 44.0f);
 
                         if (!hadDoubleJump && player.canDoubleJump)
                         {
@@ -975,9 +1489,14 @@ int main()
             drawIngredientGem(window, ingredient);
         }
 
-        drawCauldron(window, levelToDraw,PortalReady);
+        drawPortal(window, levelToDraw, PortalReady, currentLevelIndex, effectClock.getElapsedTime().asSeconds());
+        for (const Mob& mob : levelToDraw.mobs)
+        {
+            drawMob(window, mob, currentLevelIndex, effectClock.getElapsedTime().asSeconds());
+        }
         DrawParticles(window, magicParticles);
         DrawSpellProjectiles(window, spellProjectiles);
+        DrawFloatingDamage(window, damageNumbers);
         drawPlayer(window, player, effectClock.getElapsedTime().asSeconds());
         drawHud(window, levelToDraw, player);
         DrawSpellHud(window, activeSpell);

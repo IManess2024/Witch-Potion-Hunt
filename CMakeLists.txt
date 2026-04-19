@@ -10,7 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build SFML as static libraries so the first template run on Windows is simpler.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(SFML_BUILD_AUDIO OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
@@ -32,7 +32,7 @@ add_executable(WitchPotionHunt
     rendering.hpp
 )
 
-target_link_libraries(WitchPotionHunt PRIVATE SFML::Graphics)
+target_link_libraries(WitchPotionHunt PRIVATE SFML::Graphics SFML::Audio)
 
 if(WIN32)
     target_link_libraries(WitchPotionHunt PRIVATE SFML::Main)

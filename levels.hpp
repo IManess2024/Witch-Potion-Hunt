@@ -7,6 +7,28 @@ inline sf::FloatRect makeRect(float x, float y, float width, float height)
     return sf::FloatRect({x, y}, {width, height});
 }
 
+inline Mob makeMob(MobType type,
+    sf::Vector2f position,
+    sf::Vector2f size,
+    int health,
+    float patrolMinX,
+    float patrolMaxX,
+    float phase = 0.0f)
+{
+    Mob mob;
+    mob.type = type;
+    mob.position = position;
+    mob.spawnPosition = position;
+    mob.size = size;
+    mob.health = health;
+    mob.maxHealth = health;
+    mob.patrolMinX = patrolMinX;
+    mob.patrolMaxX = patrolMaxX;
+    mob.baseY = position.y;
+    mob.phase = phase;
+    return mob;
+}
+
 inline void PlacePlayerAtLevelSpawn(const Level& level, Player& player)
 {
     player.position = level.spawnPosition;
@@ -37,6 +59,9 @@ inline std::vector<Level> createLevels()
         level.ingredients.push_back({{470.f, 360.f}, false});
         level.ingredients.push_back({{760.f, 280.f}, false});
 
+        level.mobs.push_back(makeMob(MobType::Bat, { 310.f, 385.f }, { 38.f, 24.f }, 36, 180.f, 590.f, 0.3f));
+        level.mobs.push_back(makeMob(MobType::Bat, { 670.f, 230.f }, { 42.f, 26.f }, 42, 520.f, 870.f, 2.0f));
+
         levels.push_back(level);
     }
     // level 2
@@ -57,6 +82,10 @@ inline std::vector<Level> createLevels()
         level.ingredients.push_back({{320.f, 440.f}, false});
         level.ingredients.push_back({{550.f, 350.f}, false});
         level.ingredients.push_back({{720.f, 160.f}, false});
+
+        level.mobs.push_back(makeMob(MobType::Imp, { 370.f, 532.f }, { 34.f, 42.f }, 48, 350.f, 560.f, 0.0f));
+        level.mobs.push_back(makeMob(MobType::Imp, { 700.f, 532.f }, { 34.f, 42.f }, 52, 700.f, 930.f, 1.2f));
+        level.mobs.push_back(makeMob(MobType::Bat, { 585.f, 280.f }, { 38.f, 24.f }, 38, 470.f, 780.f, 1.8f));
 
         levels.push_back(level);
     }
@@ -86,6 +115,10 @@ inline std::vector<Level> createLevels()
         level.ingredients.push_back({{300.f, 400.f}, false});
         level.ingredients.push_back({{560.f, 270.f}, false});
         level.ingredients.push_back({{780.f, 140.f}, false});
+
+        level.mobs.push_back(makeMob(MobType::Golem, { 720.f, 512.f }, { 58.f, 68.f }, 110, 700.f, 930.f, 0.0f));
+        level.mobs.push_back(makeMob(MobType::Imp, { 342.f, 532.f }, { 34.f, 42.f }, 56, 330.f, 570.f, 2.0f));
+        level.mobs.push_back(makeMob(MobType::Bat, { 540.f, 210.f }, { 42.f, 26.f }, 48, 470.f, 660.f, 1.5f));
 
         levels.push_back(level);
     }
