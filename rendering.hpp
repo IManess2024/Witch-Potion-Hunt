@@ -1,41 +1,330 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <string_view>
 
 #include "game_types.hpp"
 #include "gameplay.hpp"
 
-inline void drawPlayer(sf::RenderWindow& window, const Player& player)
+inline sf::Color blendColor(sf::Color a, sf::Color b, float t)
 {
+    t = std::clamp(t, 0.0f, 1.0f);
+    return sf::Color(
+        static_cast<std::uint8_t>(static_cast<float>(a.r) + (static_cast<float>(b.r) - static_cast<float>(a.r)) * t),
+        static_cast<std::uint8_t>(static_cast<float>(a.g) + (static_cast<float>(b.g) - static_cast<float>(a.g)) * t),
+        static_cast<std::uint8_t>(static_cast<float>(a.b) + (static_cast<float>(b.b) - static_cast<float>(a.b)) * t),
+        static_cast<std::uint8_t>(static_cast<float>(a.a) + (static_cast<float>(b.a) - static_cast<float>(a.a)) * t));
+}
+
+inline void drawPixelRect(sf::RenderWindow& window, sf::Vector2f position, sf::Vector2f size, sf::Color color)
+{
+    sf::RectangleShape rect(size);
+    rect.setPosition(position);
+    rect.setFillColor(color);
+    window.draw(rect);
+}
+
+inline void drawGradientSky(sf::RenderWindow& window, sf::Color topColor, sf::Color bottomColor)
+{
+    const sf::Vector2u windowSize = window.getSize();
+    constexpr int kBands = 18;
+    const float bandHeight = static_cast<float>(windowSize.y) / static_cast<float>(kBands);
+
+    for (int band = 0; band < kBands; ++band)
+    {
+        const float t = static_cast<float>(band) / static_cast<float>(kBands - 1);
+        drawPixelRect(window,
+            { 0.0f, static_cast<float>(band) * bandHeight },
+            { static_cast<float>(windowSize.x), bandHeight + 1.0f },
+            blendColor(topColor, bottomColor, t));
+    }
+}
+
+inline void drawDitherPixels(sf::RenderWindow& window, sf::Color color, int seed, float yMin, float yMax)
+{
+    const sf::Vector2u windowSize = window.getSize();
+    for (int index = 0; index < 72; ++index)
+    {
+        const float x = std::fmod(static_cast<float>(index * 79 + seed * 37), static_cast<float>(windowSize.x));
+        const float y = yMin + std::fmod(static_cast<float>(index * 53 + seed * 61), yMax - yMin);
+        const float size = 2.0f + static_cast<float>((index + seed) % 3) * 2.0f;
+        drawPixelRect(window, { x, y }, { size, size }, color);
+    }
+}
+
+inline void drawMountainLayer(sf::RenderWindow& window, float baseY, sf::Color color, int seed)
+{
+    const sf::Vector2u windowSize = window.getSize();
+    for (int index = -1; index < 7; ++index)
+    {
+        const float width = 260.0f + static_cast<float>((index + seed + 6) % 3) * 70.0f;
+        const float x = static_cast<float>(index) * 210.0f + static_cast<float>(seed % 5) * 18.0f;
+        const float peakY = baseY - 115.0f - static_cast<float>((index + seed + 3) % 4) * 32.0f;
+
+        sf::ConvexShape mountain(3);
+        mountain.setPoint(0, { x, baseY });
+        mountain.setPoint(1, { x + width * 0.5f, peakY });
+        mountain.setPoint(2, { x + width, baseY });
+        mountain.setFillColor(color);
+        window.draw(mountain);
+    }
+
+    drawPixelRect(window,
+        { 0.0f, baseY - 4.0f },
+        { static_cast<float>(windowSize.x), 8.0f },
+        sf::Color(color.r, color.g, color.b, 95));
+}
+
+inline void drawPineLayer(sf::RenderWindow& window, float groundY, sf::Color color, int seed)
+{
+    const sf::Vector2u windowSize = window.getSize();
+    for (int index = 0; index < 18; ++index)
+    {
+        const float x = std::fmod(static_cast<float>(index * 91 + seed * 43), static_cast<float>(windowSize.x) + 120.0f) - 60.0f;
+        const float height = 68.0f + static_cast<float>((index + seed) % 5) * 18.0f;
+        const float width = 46.0f + static_cast<float>((index + seed) % 3) * 10.0f;
+
+        sf::ConvexShape tree(3);
+        tree.setPoint(0, { x, groundY });
+        tree.setPoint(1, { x + width * 0.5f, groundY - height });
+        tree.setPoint(2, { x + width, groundY });
+        tree.setFillColor(color);
+        window.draw(tree);
+
+        drawPixelRect(window, { x + width * 0.45f, groundY - 18.0f }, { 7.0f, 22.0f }, sf::Color(30, 24, 30, 170));
+    }
+}
+
+inline void drawLevelBackground(sf::RenderWindow& window, std::size_t levelIndex, float elapsedSeconds)
+{
+    const sf::Vector2u windowSize = window.getSize();
+
+    if (levelIndex == 0)
+    {
+        drawGradientSky(window, sf::Color(34, 24, 58), sf::Color(82, 52, 84));
+        drawDitherPixels(window, sf::Color(236, 221, 170, 145), 1, 24.0f, 250.0f);
+
+        sf::CircleShape moon(34.0f, 24);
+        moon.setOrigin({ 34.0f, 34.0f });
+        moon.setPosition({ 1030.0f, 94.0f });
+        moon.setFillColor(sf::Color(239, 224, 169, 215));
+        window.draw(moon);
+
+        for (int cloud = 0; cloud < 5; ++cloud)
+        {
+            const float x = 120.0f + static_cast<float>(cloud) * 225.0f + std::sin(elapsedSeconds * 0.25f + static_cast<float>(cloud)) * 10.0f;
+            const float y = 120.0f + static_cast<float>(cloud % 2) * 62.0f;
+            drawPixelRect(window, { x, y }, { 86.0f, 14.0f }, sf::Color(114, 78, 121, 86));
+            drawPixelRect(window, { x + 26.0f, y - 12.0f }, { 74.0f, 14.0f }, sf::Color(124, 88, 132, 75));
+        }
+
+        drawPineLayer(window, 580.0f, sf::Color(25, 31, 39, 220), 2);
+        drawPineLayer(window, 620.0f, sf::Color(18, 24, 31, 235), 6);
+        return;
+    }
+
+    if (levelIndex == 1)
+    {
+        drawGradientSky(window, sf::Color(18, 38, 64), sf::Color(54, 77, 102));
+        drawDitherPixels(window, sf::Color(151, 210, 226, 85), 7, 40.0f, 270.0f);
+        drawMountainLayer(window, 465.0f, sf::Color(32, 58, 82, 210), 3);
+        drawMountainLayer(window, 535.0f, sf::Color(25, 45, 67, 230), 8);
+
+        for (int mist = 0; mist < 7; ++mist)
+        {
+            const float y = 225.0f + static_cast<float>(mist) * 46.0f;
+            const float x = std::fmod(elapsedSeconds * 9.0f + static_cast<float>(mist) * 190.0f, static_cast<float>(windowSize.x) + 180.0f) - 120.0f;
+            drawPixelRect(window, { x, y }, { 150.0f, 7.0f }, sf::Color(151, 190, 203, 48));
+        }
+        return;
+    }
+
+    drawGradientSky(window, sf::Color(11, 38, 36), sf::Color(31, 70, 48));
+    drawDitherPixels(window, sf::Color(141, 235, 126, 120), 11, 65.0f, 500.0f);
+
+    for (int trunk = 0; trunk < 11; ++trunk)
+    {
+        const float x = std::fmod(static_cast<float>(trunk * 137 + 19), static_cast<float>(windowSize.x) + 80.0f) - 40.0f;
+        const float width = 18.0f + static_cast<float>(trunk % 3) * 8.0f;
+        drawPixelRect(window, { x, 108.0f }, { width, static_cast<float>(windowSize.y) }, sf::Color(21, 39, 31, 180));
+        drawPixelRect(window, { x + width - 5.0f, 108.0f }, { 5.0f, static_cast<float>(windowSize.y) }, sf::Color(38, 70, 45, 135));
+    }
+
+    for (int vine = 0; vine < 17; ++vine)
+    {
+        const float x = std::fmod(static_cast<float>(vine * 83 + 31), static_cast<float>(windowSize.x));
+        const float height = 70.0f + static_cast<float>(vine % 5) * 28.0f;
+        drawPixelRect(window, { x, 0.0f }, { 5.0f, height }, sf::Color(54, 118, 63, 150));
+        drawPixelRect(window, { x - 6.0f, height - 12.0f }, { 12.0f, 5.0f }, sf::Color(78, 154, 84, 130));
+    }
+}
+
+inline void drawSolidPlatform(sf::RenderWindow& window, const sf::FloatRect& solid, std::size_t levelIndex)
+{
+    const sf::Color baseColor = levelIndex == 0
+        ? sf::Color(87, 65, 52)
+        : (levelIndex == 1 ? sf::Color(62, 78, 91) : sf::Color(54, 83, 58));
+    const sf::Color darkColor = levelIndex == 0
+        ? sf::Color(48, 37, 35)
+        : (levelIndex == 1 ? sf::Color(35, 49, 61) : sf::Color(31, 52, 38));
+    const sf::Color topColor = levelIndex == 0
+        ? sf::Color(96, 120, 62)
+        : (levelIndex == 1 ? sf::Color(98, 123, 137) : sf::Color(65, 143, 80));
+    const sf::Color highlightColor = levelIndex == 0
+        ? sf::Color(128, 95, 70)
+        : (levelIndex == 1 ? sf::Color(111, 139, 155) : sf::Color(81, 164, 91));
+
+    drawPixelRect(window, solid.position, solid.size, baseColor);
+    drawPixelRect(window, solid.position, { solid.size.x, 7.0f }, topColor);
+    drawPixelRect(window, solid.position + sf::Vector2f(0.0f, solid.size.y - 8.0f), { solid.size.x, 8.0f }, darkColor);
+
+    for (int x = 8; x < static_cast<int>(solid.size.x) - 8; x += 24)
+    {
+        const float chipY = 15.0f + static_cast<float>((x + static_cast<int>(solid.position.y)) % 3) * 11.0f;
+        if (chipY + 5.0f < solid.size.y)
+        {
+            drawPixelRect(window,
+                solid.position + sf::Vector2f(static_cast<float>(x), chipY),
+                { 10.0f, 4.0f },
+                highlightColor);
+        }
+    }
+
+    for (int x = 14; x < static_cast<int>(solid.size.x) - 8; x += 38)
+    {
+        drawPixelRect(window,
+            solid.position + sf::Vector2f(static_cast<float>(x), 4.0f),
+            { 14.0f, 3.0f },
+            sf::Color(178, 174, 117, 100));
+    }
+}
+
+inline void drawClimbWall(sf::RenderWindow& window, const sf::FloatRect& wall)
+{
+    drawPixelRect(window, wall.position, wall.size, sf::Color(45, 99, 61));
+    drawPixelRect(window, wall.position, { wall.size.x, wall.size.y }, sf::Color(31, 69, 46, 80));
+
+    for (int y = 8; y < static_cast<int>(wall.size.y); y += 22)
+    {
+        const float offset = static_cast<float>((y / 22) % 2) * 13.0f;
+        drawPixelRect(window, wall.position + sf::Vector2f(7.0f + offset, static_cast<float>(y)), { 7.0f, 18.0f }, sf::Color(87, 179, 94));
+        drawPixelRect(window, wall.position + sf::Vector2f(18.0f - offset * 0.35f, static_cast<float>(y + 7)), { 14.0f, 5.0f }, sf::Color(111, 207, 116));
+    }
+}
+
+inline void drawIngredientGem(sf::RenderWindow& window, const Ingredient& ingredient)
+{
+    sf::ConvexShape gem(4);
+    gem.setPoint(0, { 0.0f, -13.0f });
+    gem.setPoint(1, { 13.0f, 0.0f });
+    gem.setPoint(2, { 0.0f, 13.0f });
+    gem.setPoint(3, { -13.0f, 0.0f });
+    gem.setPosition(ingredient.position);
+    gem.setFillColor(sf::Color(255, 178, 72));
+    window.draw(gem);
+
+    drawPixelRect(window, ingredient.position + sf::Vector2f(-3.0f, -10.0f), { 5.0f, 20.0f }, sf::Color(255, 224, 108, 170));
+    drawPixelRect(window, ingredient.position + sf::Vector2f(2.0f, -4.0f), { 7.0f, 4.0f }, sf::Color(255, 245, 174, 180));
+}
+
+inline void drawPlayer(sf::RenderWindow& window, const Player& player, float elapsedSeconds)
+{
+    const bool moving = std::abs(player.velocity.x) > 1.0f;
+    const float direction = player.facingRight ? 1.0f : -1.0f;
+    const float walkCycle = moving ? std::sin(elapsedSeconds * 12.0f) : 0.0f;
+    const float bob = player.onGround && moving ? std::abs(walkCycle) * 2.0f : 0.0f;
+    const float robeSway = moving ? walkCycle * 2.0f : 0.0f;
+    const sf::Vector2f origin = player.position + sf::Vector2f(0.0f, -bob);
+
+    auto localX = [&](float x, float width)
+    {
+        return player.facingRight ? origin.x + x : origin.x + player.size.x - x - width;
+    };
+
+    auto localPointX = [&](float x)
+    {
+        return player.facingRight ? origin.x + x : origin.x + player.size.x - x;
+    };
+
+    auto drawLocalRect = [&](float x, float y, float width, float height, sf::Color color)
+    {
+        drawPixelRect(window, { localX(x, width), origin.y + y }, { width, height }, color);
+    };
+
+    sf::CircleShape shadowShape(1.0f, 24);
+    shadowShape.setScale({ 19.0f, 4.0f });
+    shadowShape.setOrigin({ 1.0f, 1.0f });
+    shadowShape.setPosition(player.position + sf::Vector2f(player.size.x * 0.5f, player.size.y + 3.0f));
+    shadowShape.setFillColor(sf::Color(0, 0, 0, 75));
+    window.draw(shadowShape);
+
+    const float legOffset = player.onGround && moving ? walkCycle * 3.0f : 0.0f;
+    drawLocalRect(7.0f + legOffset, 45.0f, 7.0f, 11.0f, sf::Color(42, 30, 58));
+    drawLocalRect(20.0f - legOffset, 45.0f, 7.0f, 11.0f, sf::Color(42, 30, 58));
+
+    sf::ConvexShape robe(4);
+    robe.setPoint(0, { localPointX(4.0f), origin.y + 18.0f });
+    robe.setPoint(1, { localPointX(30.0f), origin.y + 18.0f });
+    robe.setPoint(2, { localPointX(32.0f + robeSway), origin.y + 48.0f });
+    robe.setPoint(3, { localPointX(2.0f + robeSway), origin.y + 48.0f });
+    robe.setFillColor(sf::Color(112, 52, 164));
+    window.draw(robe);
+
+    drawLocalRect(8.0f, 20.0f, 8.0f, 27.0f, sf::Color(142, 73, 190));
+    drawLocalRect(19.0f, 20.0f, 5.0f, 26.0f, sf::Color(72, 38, 116));
+    drawLocalRect(5.0f, 47.0f, 24.0f, 5.0f, sf::Color(58, 34, 97));
+
+    const float armSwing = moving ? walkCycle * 4.0f : 0.0f;
+    drawLocalRect(1.0f, 22.0f + armSwing * 0.25f, 7.0f, 17.0f, sf::Color(83, 45, 130));
+    drawLocalRect(26.0f, 22.0f - armSwing * 0.25f, 7.0f, 17.0f, sf::Color(83, 45, 130));
+    drawLocalRect(0.0f, 36.0f + armSwing * 0.25f, 8.0f, 5.0f, sf::Color(246, 215, 189));
+
     sf::CircleShape head(11.f);
-    head.setPosition(player.position + sf::Vector2f(6.f, 2.f));
+    head.setPosition(origin + sf::Vector2f(6.f, 1.f));
     head.setFillColor(sf::Color(246, 215, 189));
     window.draw(head);
 
-    sf::RectangleShape dress({player.size.x, player.size.y - 14.f});
-    dress.setPosition(player.position + sf::Vector2f(0.f, 14.f));
-    dress.setFillColor(sf::Color(120, 64, 170));
-    window.draw(dress);
+    drawLocalRect(6.0f, 11.0f, 5.0f, 13.0f, sf::Color(74, 42, 56));
+    drawLocalRect(23.0f, 11.0f, 5.0f, 12.0f, sf::Color(74, 42, 56));
+    drawLocalRect(player.facingRight ? 22.0f : 8.0f, 10.0f, 3.0f, 3.0f, sf::Color(37, 28, 34));
+    drawLocalRect(player.facingRight ? 25.0f : 5.0f, 17.0f, 5.0f, 2.0f, sf::Color(196, 92, 111));
 
     sf::ConvexShape hat(3);
-    hat.setPoint(0, {player.size.x * 0.5f, -16.f});
-    hat.setPoint(1, {2.f, 15.f});
-    hat.setPoint(2, {player.size.x - 2.f, 15.f});
-    hat.setPosition(player.position + sf::Vector2f(0.f, -2.f));
+    hat.setPoint(0, { player.size.x * 0.5f + direction * (moving ? walkCycle * 1.5f : 0.0f), -17.f });
+    hat.setPoint(1, { 3.f, 14.f });
+    hat.setPoint(2, { player.size.x - 3.f, 14.f });
+    hat.setPosition(origin + sf::Vector2f(0.f, -3.f));
     hat.setFillColor(sf::Color(42, 23, 64));
     window.draw(hat);
 
+    drawLocalRect(0.0f, 10.0f, 34.0f, 5.0f, sf::Color(35, 20, 54));
+    drawLocalRect(13.0f, -2.0f, 9.0f, 4.0f, sf::Color(116, 66, 171));
+
     sf::RectangleShape broom({28.f, 5.f});
-    broom.setPosition(player.position + sf::Vector2f(player.size.x - 2.f, 30.f));
+    broom.setOrigin({ player.facingRight ? 0.0f : 28.0f, 2.5f });
+    broom.setPosition(origin +
+        sf::Vector2f(player.facingRight ? player.size.x - 2.0f : 2.0f, 32.5f - armSwing * 0.12f));
+    broom.setRotation(sf::degrees(direction * (moving ? walkCycle * 4.0f : 0.0f)));
     broom.setFillColor(sf::Color(130, 86, 48));
     window.draw(broom);
 
     sf::RectangleShape broomBrush({10.f, 10.f});
-    broomBrush.setPosition(player.position + sf::Vector2f(player.size.x + 22.f, 27.f));
+    broomBrush.setOrigin({ player.facingRight ? 0.0f : 10.0f, 5.0f });
+    broomBrush.setPosition(origin +
+        sf::Vector2f(player.facingRight ? player.size.x + 22.0f : -22.0f, 32.0f - armSwing * 0.12f));
+    broomBrush.setRotation(sf::degrees(direction * (moving ? walkCycle * 4.0f : 0.0f)));
     broomBrush.setFillColor(sf::Color(189, 156, 79));
     window.draw(broomBrush);
+
+    const float glowPulse = (std::sin(elapsedSeconds * 9.0f) + 1.0f) * 0.5f;
+    sf::CircleShape wandGlow(4.0f + glowPulse * 1.5f, 8);
+    wandGlow.setOrigin({ wandGlow.getRadius(), wandGlow.getRadius() });
+    wandGlow.setPosition(player.position + sf::Vector2f(player.facingRight ? player.size.x + 34.0f : -34.0f, 29.0f - bob));
+    wandGlow.setFillColor(sf::Color(245, 226, 124, static_cast<std::uint8_t>(180 + glowPulse * 60.0f)));
+    window.draw(wandGlow);
 }
 
 inline void drawHud(sf::RenderWindow& window, const Level& level, const Player& player)
@@ -99,6 +388,22 @@ inline const char* getBlockLetterPattern(char letter)
             "X   X"
             "X   X"
             "X   X";
+    case 'B':
+        return "XXXX "
+            "X   X"
+            "X   X"
+            "XXXX "
+            "X   X"
+            "X   X"
+            "XXXX ";
+    case 'C':
+        return " XXXX"
+            "X    "
+            "X    "
+            "X    "
+            "X    "
+            "X    "
+            " XXXX";
     case 'E':
         return "XXXXX"
             "X    "
@@ -107,6 +412,14 @@ inline const char* getBlockLetterPattern(char letter)
             "X    "
             "X    "
             "XXXXX";
+    case 'F':
+        return "XXXXX"
+            "X    "
+            "X    "
+            "XXXX "
+            "X    "
+            "X    "
+            "X    ";
     case 'G':
         return " XXXX"
             "X    "
@@ -130,6 +443,14 @@ inline const char* getBlockLetterPattern(char letter)
             "  X  "
             "  X  "
             "  X  "
+            "XXXXX";
+    case 'L':
+        return "X    "
+            "X    "
+            "X    "
+            "X    "
+            "X    "
+            "X    "
             "XXXXX";
     case 'N':
         return "X   X"

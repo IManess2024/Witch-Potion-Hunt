@@ -13,6 +13,7 @@ inline void PlacePlayerAtLevelSpawn(const Level& level, Player& player)
     player.velocity = { 0.0f, 0.0f };
     player.onGround = false;
     player.touchingClimbWall = false;
+    player.facingRight = true;
 
 }
 

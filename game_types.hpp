@@ -14,6 +14,7 @@ struct Player
     bool touchingClimbWall{false};
     bool canDoubleJump{false};
     bool canClimb{false};
+    bool facingRight{true};
     int  extraJumpsRemaining{0};
 };
 
