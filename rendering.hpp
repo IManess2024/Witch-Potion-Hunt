@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 #include "game_types.hpp"
 #include "gameplay.hpp"
 
@@ -103,6 +105,30 @@ inline const char* getBlockLetterPattern(char letter)
             "X    "
             "X    "
             "XXXXX";
+    case 'G':
+        return " XXXX"
+            "X    "
+            "X    "
+            "X XXX"
+            "X   X"
+            "X   X"
+            " XXXX";
+    case 'M':
+        return "X   X"
+            "XX XX"
+            "X X X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X";
+    case 'O':
+        return " XXX "
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            " XXX ";
     case 'R':
         return "XXXX "
             "X   X"
@@ -126,6 +152,14 @@ inline const char* getBlockLetterPattern(char letter)
             "  X  "
             "  X  "
             "  X  "
+            "  X  ";
+    case 'V':
+        return "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            " X X "
             "  X  ";
     default:
         return "     "
@@ -163,6 +197,25 @@ inline void drawBlockLetter(sf::RenderWindow& window,
     }
 }
 
+inline float getBlockLabelWidth(std::string_view text, float pixelSize, float spacing)
+{
+    float cursor = 0.f;
+    float visibleWidth = 0.f;
+    for (char letter : text)
+    {
+        if (letter == ' ')
+        {
+            cursor += 3.f * pixelSize;
+            continue;
+        }
+
+        visibleWidth = cursor + 5.f * pixelSize;
+        cursor += 5.f * pixelSize + spacing;
+    }
+
+    return visibleWidth;
+}
+
 inline void drawBlockLabel(sf::RenderWindow& window,
     std::string_view text,
     sf::Vector2f topLeft,
@@ -184,6 +237,18 @@ inline void drawBlockLabel(sf::RenderWindow& window,
     }
 }
 
+inline void drawCenteredBlockLabel(sf::RenderWindow& window,
+    std::string_view text,
+    float centerX,
+    float topY,
+    float pixelSize,
+    float spacing,
+    sf::Color color)
+{
+    const float labelWidth = getBlockLabelWidth(text, pixelSize, spacing);
+    drawBlockLabel(window, text, { centerX - labelWidth * 0.5f, topY }, pixelSize, spacing, color);
+}
+
 inline void drawRestartOverlay(sf::RenderWindow& window,
     const sf::FloatRect& buttonBounds,
     bool hovered)
@@ -191,48 +256,43 @@ inline void drawRestartOverlay(sf::RenderWindow& window,
     const sf::Vector2u windowSize = window.getSize();
 
     sf::RectangleShape scrim({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
-    scrim.setFillColor(sf::Color(12, 12, 18, 180));
+    scrim.setFillColor(sf::Color(12, 12, 18, 205));
     window.draw(scrim);
 
-    sf::RectangleShape panel({ 360.f, 220.f });
-    panel.setOrigin({ 180.f, 110.f });
+    sf::RectangleShape panel({ 460.f, 300.f });
+    panel.setOrigin({ 230.f, 150.f });
     panel.setPosition({ static_cast<float>(windowSize.x) * 0.5f, static_cast<float>(windowSize.y) * 0.5f });
-    panel.setFillColor(sf::Color(46, 34, 30, 240));
+    panel.setFillColor(sf::Color(42, 31, 30, 245));
     panel.setOutlineThickness(4.f);
-    panel.setOutlineColor(sf::Color(156, 111, 72));
+    panel.setOutlineColor(sf::Color(172, 120, 78));
     window.draw(panel);
 
-    sf::CircleShape potion(26.f);
-    potion.setOrigin({ 26.f, 26.f });
-    potion.setPosition(panel.getPosition() + sf::Vector2f(0.f, -42.f));
-    potion.setFillColor(sf::Color(167, 68, 68));
-    window.draw(potion);
+    drawCenteredBlockLabel(window,
+        "GAME OVER",
+        panel.getPosition().x,
+        panel.getPosition().y - 102.f,
+        7.f,
+        7.f,
+        sf::Color(240, 94, 86));
 
-    sf::RectangleShape cork({ 18.f, 10.f });
-    cork.setOrigin({ 9.f, 5.f });
-    cork.setPosition(potion.getPosition() + sf::Vector2f(0.f, -28.f));
-    cork.setFillColor(sf::Color(130, 86, 48));
-    window.draw(cork);
-
-    sf::RectangleShape crack({ 8.f, 46.f });
-    crack.setOrigin({ 4.f, 23.f });
-    crack.setPosition(potion.getPosition());
-    crack.setRotation(sf::degrees(30.f));
-    crack.setFillColor(sf::Color(255, 230, 190));
-    window.draw(crack);
+    sf::RectangleShape divider({ 300.f, 4.f });
+    divider.setOrigin({ 150.f, 2.f });
+    divider.setPosition(panel.getPosition() + sf::Vector2f(0.f, -24.f));
+    divider.setFillColor(sf::Color(172, 120, 78));
+    window.draw(divider);
 
     sf::RectangleShape button({ buttonBounds.size.x, buttonBounds.size.y });
     button.setPosition(buttonBounds.position);
-    button.setFillColor(hovered ? sf::Color(92, 160, 109) : sf::Color(70, 129, 86));
+    button.setFillColor(hovered ? sf::Color(96, 169, 112) : sf::Color(70, 129, 86));
     button.setOutlineThickness(4.f);
     button.setOutlineColor(sf::Color(212, 233, 190));
     window.draw(button);
 
-    drawBlockLabel(window,
+    drawCenteredBlockLabel(window,
         "RESTART",
-        buttonBounds.position + sf::Vector2f(31.f, 22.f),
+        buttonBounds.position.x + buttonBounds.size.x * 0.5f,
+        buttonBounds.position.y + 20.f,
         4.f,
         6.f,
         sf::Color(236, 248, 230));
 }
-

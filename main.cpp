@@ -18,8 +18,7 @@ namespace
 
     sf::FloatRect GetRestartButtonBounds()
     {
-        return sf::FloatRect({ 520.0f , 404.0f }, { 240.0f, 72.0f });
-
+        return sf::FloatRect({ 510.0f , 430.0f }, { 260.0f, 64.0f });
     }
 
     bool IsPointInside(const sf::FloatRect& rect, const sf::Vector2f point)
@@ -80,20 +79,25 @@ int main()
                 {
                     window.close();
                 }
-                if (gameLost && KeyPressed->code == sf::Keyboard::Key::R || KeyPressed->code == sf::Keyboard::Key::Enter)
+                if (gameLost &&
+                    (KeyPressed->code == sf::Keyboard::Key::R ||
+                        KeyPressed->code == sf::Keyboard::Key::Enter))
                 {
                     ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
-
                 }
-                if (gameLost)
+            }
+
+            if (gameLost)
+            {
+                if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
+                    const sf::Vector2f clickposition(
+                        static_cast<float>(mousepressed->position.x),
+                        static_cast<float>(mousepressed->position.y));
+                    if (mousepressed->button == sf::Mouse::Button::Left &&
+                        IsPointInside(GetRestartButtonBounds(), clickposition))
                     {
-                        const sf::Vector2f clickposition(static_cast<float>(mousepressed->position.x), static_cast<float>(mousepressed->position.y));
-                        if (IsPointInside(GetRestartButtonBounds(), clickposition))
-                        {
-                            ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
-                        }
+                        ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
                     }
                 }
             }
@@ -248,17 +252,16 @@ int main()
         drawCauldron(window, levelToDraw,PortalReady);
         drawPlayer(window, player);
         drawHud(window, levelToDraw, player);
-        if(gameLost)
-            if (gameLost)
-            {
-                const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-                const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                    static_cast<float>(mousePosition.y));
-                const sf::FloatRect restartButtonBounds = GetRestartButtonBounds();
-                drawRestartOverlay(window,
-                    restartButtonBounds,
-                    IsPointInside(restartButtonBounds, mousePoint));
-            }
+        if (gameLost)
+        {
+            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
+                static_cast<float>(mousePosition.y));
+            const sf::FloatRect restartButtonBounds = GetRestartButtonBounds();
+            drawRestartOverlay(window,
+                restartButtonBounds,
+                IsPointInside(restartButtonBounds, mousePoint));
+        }
 
         window.display();
     }
