@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <SFML/Audio.hpp>
@@ -93,6 +94,11 @@ namespace
     sf::FloatRect GetRestartButtonBounds()
     {
         return sf::FloatRect({ 510.0f , 430.0f }, { 260.0f, 64.0f });
+    }
+
+    sf::FloatRect GetAbilityWarningOkBounds()
+    {
+        return sf::FloatRect({ 535.0f, 456.0f }, { 210.0f, 58.0f });
     }
 
     bool IsPointInside(const sf::FloatRect& rect, const sf::Vector2f point)
@@ -985,14 +991,17 @@ namespace
         }
     }
 
-    void DrawSpellHud(sf::RenderWindow& window, SpellType activeSpell)
+    void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player)
     {
-        sf::RectangleShape panel({ 268.0f, 58.0f });
-        panel.setPosition({ 18.0f, 76.0f });
+        sf::RectangleShape panel({ 400.0f, 144.0f });
+        panel.setPosition({ 18.0f, 16.0f });
         panel.setFillColor(sf::Color(28, 24, 42, 210));
         panel.setOutlineThickness(2.0f);
         panel.setOutlineColor(sf::Color(142, 113, 198, 180));
         window.draw(panel);
+
+        drawPixelRect(window, { 20.0f, 18.0f }, { 396.0f, 5.0f }, sf::Color(255, 255, 255, 24));
+        drawBlockLabel(window, "SPELLS", { 34.0f, 30.0f }, 1.8f, 2.0f, sf::Color(191, 204, 255));
 
         constexpr std::array<SpellType, 3> spells = {
             SpellType::StarBolt,
@@ -1008,28 +1017,114 @@ namespace
         for (std::size_t index = 0; index < spells.size(); ++index)
         {
             const bool active = spells[index] == activeSpell;
-            const sf::Vector2f origin(34.0f + static_cast<float>(index) * 44.0f, 93.0f);
-            sf::RectangleShape slot({ 32.0f, 32.0f });
+            const sf::Vector2f origin(34.0f + static_cast<float>(index) * 44.0f, 54.0f);
+            sf::RectangleShape slot({ 34.0f, 34.0f });
             slot.setPosition(origin);
             slot.setFillColor(active ? sf::Color(72, 57, 96, 235) : sf::Color(43, 36, 58, 220));
             slot.setOutlineThickness(active ? 3.0f : 1.0f);
             slot.setOutlineColor(active ? sf::Color(245, 232, 154) : sf::Color(108, 93, 132));
             window.draw(slot);
 
-            sf::CircleShape icon(8.0f + static_cast<float>(index) * 1.5f, index == 2 ? 4 : 12);
-            icon.setOrigin({ icon.getRadius(), icon.getRadius() });
-            icon.setPosition(origin + sf::Vector2f(16.0f, 16.0f));
-            icon.setRotation(sf::degrees(index == 2 ? 45.0f : 0.0f));
-            icon.setFillColor(colors[index]);
-            window.draw(icon);
+            drawBlockLabel(window, std::string_view(index == 0 ? "1" : (index == 1 ? "2" : "3")),
+                origin + sf::Vector2f(3.0f, 3.0f),
+                1.1f,
+                1.0f,
+                active ? sf::Color(250, 238, 165) : sf::Color(139, 128, 154));
+
+            const sf::Vector2f center = origin + sf::Vector2f(18.0f, 18.0f);
+            if (spells[index] == SpellType::StarBolt)
+            {
+                sf::CircleShape glow(9.0f, 8);
+                glow.setOrigin({ 9.0f, 9.0f });
+                glow.setPosition(center);
+                glow.setFillColor(sf::Color(255, 226, 88, active ? 130 : 70));
+                window.draw(glow);
+
+                drawPixelRect(window, center + sf::Vector2f(-2.0f, -11.0f), { 4.0f, 22.0f }, colors[index]);
+                drawPixelRect(window, center + sf::Vector2f(-11.0f, -2.0f), { 22.0f, 4.0f }, colors[index]);
+                drawPixelRect(window, center + sf::Vector2f(-6.0f, -6.0f), { 12.0f, 12.0f }, sf::Color(255, 246, 171, 230));
+            }
+            else if (spells[index] == SpellType::MoonFlame)
+            {
+                sf::CircleShape flame(11.0f, 14);
+                flame.setOrigin({ 11.0f, 11.0f });
+                flame.setPosition(center + sf::Vector2f(0.0f, 1.0f));
+                flame.setFillColor(sf::Color(52, 157, 255, active ? 205 : 125));
+                window.draw(flame);
+
+                sf::CircleShape core(7.0f, 12);
+                core.setOrigin({ 7.0f, 7.0f });
+                core.setPosition(center + sf::Vector2f(1.0f, 2.0f));
+                core.setFillColor(colors[index]);
+                window.draw(core);
+
+                drawPixelRect(window, center + sf::Vector2f(-3.0f, -9.0f), { 5.0f, 9.0f }, sf::Color(220, 255, 246, 210));
+            }
+            else
+            {
+                sf::ConvexShape crystal(4);
+                crystal.setPoint(0, { 0.0f, -12.0f });
+                crystal.setPoint(1, { 10.0f, 0.0f });
+                crystal.setPoint(2, { 0.0f, 12.0f });
+                crystal.setPoint(3, { -10.0f, 0.0f });
+                crystal.setPosition(center);
+                crystal.setFillColor(colors[index]);
+                window.draw(crystal);
+
+                drawPixelRect(window, center + sf::Vector2f(-2.0f, -9.0f), { 4.0f, 18.0f }, sf::Color(255, 220, 249, 170));
+                drawPixelRect(window, center + sf::Vector2f(1.0f, -2.0f), { 6.0f, 3.0f }, sf::Color(255, 236, 152, 180));
+            }
         }
 
         drawBlockLabel(window,
             GetSpellName(activeSpell),
-            { 170.0f, 96.0f },
+            { 178.0f, 59.0f },
             2.0f,
             3.0f,
             sf::Color(235, 232, 255));
+
+        drawPixelRect(window, { 34.0f, 99.0f }, { 368.0f, 2.0f }, sf::Color(142, 113, 198, 90));
+        drawBlockLabel(window, "ABILITIES", { 34.0f, 120.0f }, 1.55f, 1.8f, sf::Color(191, 204, 255));
+        drawHudAbilityBadge(window,
+            { 132.0f, 110.0f },
+            { 112.0f, 38.0f },
+            player.canDoubleJump && player.extraJumpsRemaining > 0,
+            "D JUMP",
+            false);
+        drawHudAbilityBadge(window,
+            { 260.0f, 110.0f },
+            { 100.0f, 38.0f },
+            player.canClimb,
+            "CLIMB",
+            true);
+    }
+
+    void DrawAbilityWarningOverlay(sf::RenderWindow& window, const sf::FloatRect& buttonBounds, bool buttonHovered)
+    {
+        const sf::Vector2u windowSize = window.getSize();
+        sf::RectangleShape scrim({ static_cast<float>(windowSize.x), static_cast<float>(windowSize.y) });
+        scrim.setFillColor(sf::Color(8, 7, 13, 165));
+        window.draw(scrim);
+
+        sf::RectangleShape panel({ 560.0f, 300.0f });
+        panel.setPosition({ 360.0f, 210.0f });
+        panel.setFillColor(sf::Color(32, 27, 46, 245));
+        panel.setOutlineThickness(4.0f);
+        panel.setOutlineColor(sf::Color(238, 196, 88, 230));
+        window.draw(panel);
+
+        drawCenteredBlockLabel(window, "ABILITY WARNING", 640.0f, 246.0f, 3.0f, 4.0f, sf::Color(255, 237, 168));
+        drawCenteredBlockLabel(window, "DOUBLE JUMP IS ONE USE", 640.0f, 316.0f, 2.0f, 3.0f, sf::Color(235, 232, 255));
+        drawCenteredBlockLabel(window, "PRESS JUMP IN AIR CAREFULLY", 640.0f, 352.0f, 2.0f, 3.0f, sf::Color(199, 207, 232));
+
+        sf::RectangleShape button({ buttonBounds.size.x, buttonBounds.size.y });
+        button.setPosition(buttonBounds.position);
+        button.setFillColor(buttonHovered ? sf::Color(255, 206, 99, 245) : sf::Color(217, 151, 74, 235));
+        button.setOutlineThickness(3.0f);
+        button.setOutlineColor(sf::Color(74, 42, 56, 235));
+        window.draw(button);
+
+        drawCenteredBlockLabel(window, "OK", buttonBounds.position.x + buttonBounds.size.x * 0.5f, buttonBounds.position.y + 18.0f, 2.5f, 4.0f, sf::Color(38, 28, 42));
     }
 
     void UpdateParticles(std::vector<MagicParticle>& particles, float dt)
@@ -1109,6 +1204,8 @@ int main()
     float              trailSpawnTimer = 0.0f;
     float              spellCooldown = 0.0f;
     bool               castingHeld = false;
+    std::vector<bool>  abilityWarningDismissed(levels.size(), false);
+    bool               abilityWarningVisible = false;
 
     StartBackgroundMusic(audio);
 
@@ -1128,7 +1225,18 @@ int main()
         return sf::Keyboard::isKeyPressed(key) || sf::Keyboard::isKeyPressed(scancode);
     };
 
-
+    auto dismissAbilityWarning = [&]()
+    {
+        if (currentLevelIndex < abilityWarningDismissed.size())
+        {
+            abilityWarningDismissed[currentLevelIndex] = true;
+        }
+        abilityWarningVisible = false;
+        castingHeld = false;
+        jumpwasheld = isKeyHeld(sf::Keyboard::Key::Space, sf::Keyboard::Scan::Space) ||
+            isKeyHeld(sf::Keyboard::Key::W, sf::Keyboard::Scan::W) ||
+            isKeyHeld(sf::Keyboard::Key::Up, sf::Keyboard::Scan::Up);
+    };
 
 
     while (window.isOpen())
@@ -1145,6 +1253,14 @@ int main()
                 if (keyMatches(*KeyPressed, sf::Keyboard::Key::Escape, sf::Keyboard::Scan::Escape))
                 {
                     window.close();
+                }
+                if (abilityWarningVisible)
+                {
+                    if (keyMatches(*KeyPressed, sf::Keyboard::Key::Enter, sf::Keyboard::Scan::Enter))
+                    {
+                        dismissAbilityWarning();
+                    }
+                    continue;
                 }
                 if (!CanRestart(gameWon, gameLost))
                 {
@@ -1169,6 +1285,8 @@ int main()
                         keyMatches(*KeyPressed, sf::Keyboard::Key::Enter, sf::Keyboard::Scan::Enter)))
                 {
                     ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+                    abilityWarningDismissed.assign(levels.size(), false);
+                    abilityWarningVisible = false;
                     effectClock.restart();
                     magicParticles.clear();
                     spellProjectiles.clear();
@@ -1177,6 +1295,29 @@ int main()
                     spellCooldown = 0.0f;
                     castingHeld = false;
                 }
+            }
+
+            if (abilityWarningVisible)
+            {
+                if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
+                {
+                    const sf::Vector2f clickposition(
+                        static_cast<float>(mousepressed->position.x),
+                        static_cast<float>(mousepressed->position.y));
+                    if (mousepressed->button == sf::Mouse::Button::Left &&
+                        IsPointInside(GetAbilityWarningOkBounds(), clickposition))
+                    {
+                        dismissAbilityWarning();
+                    }
+                }
+                else if (const auto* mousereleased = event->getIf<sf::Event::MouseButtonReleased>())
+                {
+                    if (mousereleased->button == sf::Mouse::Button::Left)
+                    {
+                        castingHeld = false;
+                    }
+                }
+                continue;
             }
 
             if (CanRestart(gameWon, gameLost))
@@ -1190,6 +1331,8 @@ int main()
                         IsPointInside(GetRestartButtonBounds(), clickposition))
                     {
                         ResetRun(levels, player, currentLevelIndex, gameWon, gameLost, jumpwasheld, window);
+                        abilityWarningDismissed.assign(levels.size(), false);
+                        abilityWarningVisible = false;
                         effectClock.restart();
                         magicParticles.clear();
                         spellProjectiles.clear();
@@ -1229,7 +1372,7 @@ int main()
 
          Level& currentLevel = levels[currentLevelIndex];
 
-        if (!gameWon && !gameLost)
+        if (!gameWon && !gameLost && !abilityWarningVisible)
         {
             if (castingHeld && spellCooldown <= 0.0f)
             {
@@ -1440,6 +1583,7 @@ int main()
                         PlacePlayerAtLevelSpawn(levels[currentLevelIndex], player);
                         refreshabilitesforlevel(player, currentLevelIndex);
                         trailSpawnTimer = 0.0f;
+                        castingHeld = false;
                         SpawnLevelTransitionBurst(magicParticles, player, particleSeed);
                         PlaySound(audio, SoundEffect::Portal, 44.0f);
 
@@ -1453,6 +1597,13 @@ int main()
                             SpawnAbilityUnlockBurst(magicParticles, player, true, particleSeed);
                         }
 
+                        if (player.canDoubleJump &&
+                            currentLevelIndex < abilityWarningDismissed.size() &&
+                            !abilityWarningDismissed[currentLevelIndex])
+                        {
+                            abilityWarningVisible = true;
+                            jumpwasheld = false;
+                        }
                     }
                 }
             }
@@ -1498,8 +1649,8 @@ int main()
         DrawSpellProjectiles(window, spellProjectiles);
         DrawFloatingDamage(window, damageNumbers);
         drawPlayer(window, player, effectClock.getElapsedTime().asSeconds());
-        drawHud(window, levelToDraw, player);
-        DrawSpellHud(window, activeSpell);
+        DrawSpellAndAbilityHud(window, activeSpell, player);
+        drawCoinsHud(window, levelToDraw);
         if (gameLost)
         {
             const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
@@ -1520,6 +1671,16 @@ int main()
                 restartButtonBounds,
                 IsPointInside(restartButtonBounds, mousePoint),
                 effectClock.getElapsedTime().asSeconds());
+        }
+        else if (abilityWarningVisible)
+        {
+            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
+                static_cast<float>(mousePosition.y));
+            const sf::FloatRect okButtonBounds = GetAbilityWarningOkBounds();
+            DrawAbilityWarningOverlay(window,
+                okButtonBounds,
+                IsPointInside(okButtonBounds, mousePoint));
         }
 
         window.display();

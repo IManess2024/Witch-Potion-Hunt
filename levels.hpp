@@ -49,7 +49,7 @@ inline std::vector<Level> createLevels()
         level.spawnPosition   = {55.f, 500.f};
         level.cauldronArea    = makeRect(800.f, 240.f, 70.f, 70.f);
 
-        level.solids.push_back(makeRect(0.f, 580.f, 960.f, 60.f));
+        level.solids.push_back(makeRect(0.f, 580.f, 1280.f, 60.f));
         level.solids.push_back(makeRect(140.f, 470.f, 180.f, 20.f));
         level.solids.push_back(makeRect(410.f, 390.f, 180.f, 20.f));
         level.solids.push_back(makeRect(690.f, 310.f, 180.f, 20.f));

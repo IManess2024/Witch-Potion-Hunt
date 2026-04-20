@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 #include "game_types.hpp"
@@ -327,30 +328,6 @@ inline void drawPlayer(sf::RenderWindow& window, const Player& player, float ela
     window.draw(wandGlow);
 }
 
-inline void drawHud(sf::RenderWindow& window, const Level& level, const Player& player)
-{
-    for (std::size_t i = 0; i < level.ingredients.size(); ++i)
-    {
-        sf::CircleShape icon(8.f);
-        icon.setPosition({18.f + static_cast<float>(i) * 24.f, 16.f});
-        icon.setFillColor(level.ingredients[i].collected ? sf::Color(80, 80, 80)
-                                                         : sf::Color(255, 180, 80));
-        window.draw(icon);
-    }
-
-    sf::RectangleShape doubleJumpIcon({22.f, 10.f});
-    doubleJumpIcon.setPosition({18.f, 42.f});
-    doubleJumpIcon.setFillColor(player.canDoubleJump ? sf::Color(132, 105, 255)
-                                                     : sf::Color(60, 60, 60));
-    window.draw(doubleJumpIcon);
-
-    sf::RectangleShape climbIcon({22.f, 10.f});
-    climbIcon.setPosition({48.f, 42.f});
-    climbIcon.setFillColor(player.canClimb ? sf::Color(91, 196, 116)
-                                           : sf::Color(60, 60, 60));
-    window.draw(climbIcon);
-}
-
 inline void drawPortal(sf::RenderWindow& window,
     const Level& level,
     bool readyForExit,
@@ -564,6 +541,14 @@ inline const char* getBlockLetterPattern(char letter)
             "    X"
             "    X"
             " XXX ";
+    case '/':
+        return "    X"
+            "    X"
+            "   X "
+            "  X  "
+            " X   "
+            "X    "
+            "X    ";
     case 'A':
         return " XXX "
             "X   X"
@@ -588,6 +573,14 @@ inline const char* getBlockLetterPattern(char letter)
             "X    "
             "X    "
             " XXXX";
+    case 'D':
+        return "XXXX "
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "X   X"
+            "XXXX ";
     case 'E':
         return "XXXXX"
             "X    "
@@ -612,6 +605,14 @@ inline const char* getBlockLetterPattern(char letter)
             "X   X"
             "X   X"
             " XXXX";
+    case 'H':
+        return "X   X"
+            "X   X"
+            "X   X"
+            "XXXXX"
+            "X   X"
+            "X   X"
+            "X   X";
     case 'M':
         return "X   X"
             "XX XX"
@@ -628,6 +629,22 @@ inline const char* getBlockLetterPattern(char letter)
             "  X  "
             "  X  "
             "XXXXX";
+    case 'J':
+        return "XXXXX"
+            "    X"
+            "    X"
+            "    X"
+            "X   X"
+            "X   X"
+            " XXX ";
+    case 'K':
+        return "X   X"
+            "X  X "
+            "X X  "
+            "XX   "
+            "X X  "
+            "X  X "
+            "X   X";
     case 'L':
         return "X    "
             "X    "
@@ -652,6 +669,22 @@ inline const char* getBlockLetterPattern(char letter)
             "X   X"
             "X   X"
             " XXX ";
+    case 'P':
+        return "XXXX "
+            "X   X"
+            "X   X"
+            "XXXX "
+            "X    "
+            "X    "
+            "X    ";
+    case 'Q':
+        return " XXX "
+            "X   X"
+            "X   X"
+            "X   X"
+            "X X X"
+            "X  X "
+            " XX X";
     case 'R':
         return "XXXX "
             "X   X"
@@ -700,6 +733,14 @@ inline const char* getBlockLetterPattern(char letter)
             "X X X"
             "XX XX"
             "X   X";
+    case 'X':
+        return "X   X"
+            "X   X"
+            " X X "
+            "  X  "
+            " X X "
+            "X   X"
+            "X   X";
     case 'Y':
         return "X   X"
             "X   X"
@@ -708,6 +749,14 @@ inline const char* getBlockLetterPattern(char letter)
             "  X  "
             "  X  "
             "  X  ";
+    case 'Z':
+        return "XXXXX"
+            "    X"
+            "   X "
+            "  X  "
+            " X   "
+            "X    "
+            "XXXXX";
     default:
         return "     "
             "     "
@@ -794,6 +843,124 @@ inline void drawCenteredBlockLabel(sf::RenderWindow& window,
 {
     const float labelWidth = getBlockLabelWidth(text, pixelSize, spacing);
     drawBlockLabel(window, text, { centerX - labelWidth * 0.5f, topY }, pixelSize, spacing, color);
+}
+
+inline void drawHudIngredientToken(sf::RenderWindow& window,
+    sf::Vector2f center,
+    bool collected,
+    std::size_t index)
+{
+    const sf::Color rimColor = collected ? sf::Color(55, 58, 64, 235) : sf::Color(160, 92, 35, 245);
+    const sf::Color faceColor = collected ? sf::Color(82, 86, 94, 235) : sf::Color(255, 179, 65, 245);
+    const sf::Color warmShade = collected ? sf::Color(48, 50, 56, 180) : sf::Color(198, 103, 38, 180);
+    const sf::Color highlight = collected ? sf::Color(132, 136, 146, 170) : sf::Color(255, 235, 144, 220);
+
+    sf::CircleShape shadow(12.0f, 18);
+    shadow.setOrigin({ 12.0f, 12.0f });
+    shadow.setPosition(center + sf::Vector2f(1.5f, 2.5f));
+    shadow.setFillColor(sf::Color(10, 9, 16, 120));
+    window.draw(shadow);
+
+    sf::CircleShape rim(12.0f, 24);
+    rim.setOrigin({ 12.0f, 12.0f });
+    rim.setPosition(center);
+    rim.setFillColor(rimColor);
+    rim.setOutlineThickness(2.0f);
+    rim.setOutlineColor(collected ? sf::Color(32, 34, 40, 230) : sf::Color(255, 214, 103, 230));
+    window.draw(rim);
+
+    sf::CircleShape face(8.5f, 18);
+    face.setOrigin({ 8.5f, 8.5f });
+    face.setPosition(center + sf::Vector2f(-0.8f, -0.8f));
+    face.setFillColor(faceColor);
+    window.draw(face);
+
+    drawPixelRect(window, center + sf::Vector2f(-4.0f, -8.0f), { 4.0f, 14.0f }, highlight);
+    drawPixelRect(window, center + sf::Vector2f(0.0f, -3.0f), { 7.0f, 3.0f }, highlight);
+    drawPixelRect(window, center + sf::Vector2f(3.0f, 4.0f), { 5.0f, 3.0f }, warmShade);
+
+    const float chipOffset = static_cast<float>(index % 2) * 2.0f;
+    drawPixelRect(window, center + sf::Vector2f(-8.0f + chipOffset, 5.0f), { 3.0f, 3.0f }, warmShade);
+    drawPixelRect(window, center + sf::Vector2f(5.0f - chipOffset, -7.0f), { 2.0f, 2.0f }, highlight);
+
+    if (collected)
+    {
+        drawPixelRect(window, center + sf::Vector2f(-5.0f, -1.0f), { 3.0f, 5.0f }, sf::Color(151, 233, 163, 230));
+        drawPixelRect(window, center + sf::Vector2f(-2.0f, 2.0f), { 3.0f, 3.0f }, sf::Color(151, 233, 163, 230));
+        drawPixelRect(window, center + sf::Vector2f(1.0f, -5.0f), { 3.0f, 9.0f }, sf::Color(151, 233, 163, 230));
+    }
+}
+
+inline void drawHudAbilityBadge(sf::RenderWindow& window,
+    sf::Vector2f position,
+    sf::Vector2f size,
+    bool unlocked,
+    std::string_view label,
+    bool climbBadge)
+{
+    const sf::Color accent = climbBadge ? sf::Color(91, 196, 116) : sf::Color(132, 105, 255);
+    const sf::Color mutedAccent = climbBadge ? sf::Color(64, 106, 75) : sf::Color(80, 72, 119);
+    const sf::Color iconColor = unlocked ? accent : mutedAccent;
+    const sf::Color textColor = unlocked ? sf::Color(236, 235, 255) : sf::Color(135, 134, 150);
+
+    sf::RectangleShape badge(size);
+    badge.setPosition(position);
+    badge.setFillColor(unlocked ? sf::Color(43, 36, 58, 235) : sf::Color(32, 30, 38, 225));
+    badge.setOutlineThickness(2.0f);
+    badge.setOutlineColor(unlocked ? sf::Color(accent.r, accent.g, accent.b, 210) : sf::Color(75, 72, 86, 210));
+    window.draw(badge);
+
+    drawPixelRect(window, position + sf::Vector2f(1.0f, 1.0f), { size.x - 2.0f, 4.0f }, sf::Color(255, 255, 255, unlocked ? 34 : 16));
+
+    if (climbBadge)
+    {
+        drawPixelRect(window, position + sf::Vector2f(10.0f, 8.0f), { 5.0f, 20.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(22.0f, 8.0f), { 5.0f, 20.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(10.0f, 12.0f), { 17.0f, 4.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(10.0f, 22.0f), { 17.0f, 4.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(17.0f, 6.0f), { 4.0f, 25.0f }, sf::Color(57, 139, 80, unlocked ? 190 : 80));
+    }
+    else
+    {
+        drawPixelRect(window, position + sf::Vector2f(15.0f, 7.0f), { 5.0f, 18.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(10.0f, 12.0f), { 15.0f, 5.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(8.0f, 24.0f), { 19.0f, 4.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(12.0f, 4.0f), { 11.0f, 4.0f }, iconColor);
+        drawPixelRect(window, position + sf::Vector2f(16.0f, 1.0f), { 3.0f, 3.0f }, iconColor);
+    }
+
+    drawBlockLabel(window, label, position + sf::Vector2f(35.0f, 12.0f), 1.6f, 2.0f, textColor);
+}
+
+inline void drawCoinsHud(sf::RenderWindow& window, const Level& level)
+{
+    sf::RectangleShape panel({ 338.0f, 92.0f });
+    panel.setPosition({ 924.0f, 16.0f });
+    panel.setFillColor(sf::Color(24, 22, 34, 220));
+    panel.setOutlineThickness(2.0f);
+    panel.setOutlineColor(sf::Color(142, 113, 198, 150));
+    window.draw(panel);
+
+    drawPixelRect(window, { 926.0f, 18.0f }, { 334.0f, 5.0f }, sf::Color(255, 255, 255, 28));
+    drawBlockLabel(window, "COINS TO COLLECT", { 940.0f, 29.0f }, 2.0f, 2.0f, sf::Color(241, 231, 189));
+
+    const int collectedCount = static_cast<int>(std::count_if(level.ingredients.begin(),
+        level.ingredients.end(),
+        [](const Ingredient& ingredient)
+        {
+            return ingredient.collected;
+        }));
+
+    for (std::size_t i = 0; i < level.ingredients.size(); ++i)
+    {
+        drawHudIngredientToken(window,
+            { 954.0f + static_cast<float>(i) * 34.0f, 70.0f },
+            static_cast<int>(i) < collectedCount,
+            i);
+    }
+
+    const std::string progress = std::to_string(collectedCount) + "/" + std::to_string(level.ingredients.size());
+    drawBlockLabel(window, progress, { 1104.0f, 61.0f }, 2.0f, 2.0f, sf::Color(235, 232, 255));
 }
 
 inline void drawConfetti(sf::RenderWindow& window, float elapsedSeconds)
