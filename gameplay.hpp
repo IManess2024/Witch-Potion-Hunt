@@ -8,6 +8,8 @@ constexpr float kGravity        = 1200.f;
 constexpr float kFixedDt        = 60.f;
 constexpr float kClimbSpeed = 180.0f;
 constexpr float kWallSlideSpeed = 120.0f;
+constexpr int kPlayerMaxHealth = 100;
+constexpr float kPlayerMaxMana = 100.0f;
 
 
 
@@ -20,6 +22,15 @@ inline sf::FloatRect getPlayerBounds(const Player& player)
 inline sf::FloatRect getMobBounds(const Mob& mob)
 {
     return sf::FloatRect(mob.position, mob.size);
+}
+
+inline void ResetPlayerResources(Player& player)
+{
+    player.maxHealth = kPlayerMaxHealth;
+    player.health = player.maxHealth;
+    player.maxMana = kPlayerMaxMana;
+    player.mana = player.maxMana;
+    player.hurtCooldown = 0.0f;
 }
 
 inline bool allIngredientsCollected(const Level& level)

@@ -452,6 +452,24 @@ inline void drawMob(sf::RenderWindow& window, const Mob& mob, std::size_t levelI
         drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x - 25.0f, mob.size.y - 8.0f), { 15.0f, 8.0f }, sf::Color(42, 54, 45));
     }
 
+    if (mob.behavior == MobBehavior::Fast)
+    {
+        drawPixelRect(window, mob.position + sf::Vector2f(-8.0f, mob.size.y * 0.45f), { 10.0f, 3.0f }, sf::Color(255, 231, 95, 190));
+        drawPixelRect(window, mob.position + sf::Vector2f(-15.0f, mob.size.y * 0.6f), { 12.0f, 3.0f }, sf::Color(255, 231, 95, 130));
+    }
+    else if (mob.behavior == MobBehavior::Chase)
+    {
+        drawPixelRect(window, mob.position + sf::Vector2f(mob.size.x * 0.5f - 8.0f, -17.0f), { 16.0f, 4.0f }, sf::Color(255, 76, 93, 210));
+    }
+    else if (mob.behavior == MobBehavior::Shooter)
+    {
+        sf::CircleShape focus(5.0f, 8);
+        focus.setOrigin({ 5.0f, 5.0f });
+        focus.setPosition(mob.position + sf::Vector2f(mob.size.x * 0.5f, -15.0f));
+        focus.setFillColor(sf::Color(98, 229, 216, 210));
+        window.draw(focus);
+    }
+
     const float healthPercent = static_cast<float>(mob.health) / static_cast<float>(mob.maxHealth);
     drawPixelRect(window, mob.position + sf::Vector2f(0.0f, -9.0f), { mob.size.x, 4.0f }, sf::Color(36, 24, 30, 170));
     drawPixelRect(window, mob.position + sf::Vector2f(0.0f, -9.0f), { mob.size.x * healthPercent, 4.0f }, sf::Color(234, 70, 82, 220));
