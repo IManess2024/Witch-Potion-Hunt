@@ -1273,7 +1273,99 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
             sf::Color(255, 255, 255, 55));
     }
 
-    void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player)
+    void drawHUDfairy(sf::RenderWindow& window, float elapsedSeconds)
+    {
+        sf::RectangleShape panel({ 188.0f, 122.0f });
+        panel.setPosition({ 18.0f, 228.0f });
+        panel.setFillColor(sf::Color(27, 23, 40, 205));
+        panel.setOutlineThickness(2.0f);
+        panel.setOutlineColor(sf::Color(138, 117, 194, 160));
+        window.draw(panel);
+
+        drawPixelRect(window, panel.getPosition() + sf::Vector2f(2.0f, 2.0f), { 184.0f, 4.0f }, sf::Color(255, 255, 255, 22));
+        drawBlockLabel(window, "FAIRY", panel.getPosition() + sf::Vector2f(16.0f, 14.0f), 1.75f, 2.0f, sf::Color(242, 232, 186));
+
+        const sf::Vector2f fairyCenter = panel.getPosition() +
+            sf::Vector2f(94.0f, 76.0f + std::sin(elapsedSeconds * 2.1f) * 4.5f);
+        const float wingLift = std::sin(elapsedSeconds * 8.0f) * 5.0f;
+        const float shimmer = (std::sin(elapsedSeconds * 3.6f) + 1.0f) * 0.5f;
+
+        sf::CircleShape glow(30.0f, 22);
+        glow.setOrigin({ 30.0f, 30.0f });
+        glow.setPosition(fairyCenter + sf::Vector2f(0.0f, 2.0f));
+        glow.setFillColor(sf::Color(132, 228, 255, static_cast<std::uint8_t>(42.0f + shimmer * 28.0f)));
+        window.draw(glow);
+
+        sf::CircleShape shadow(1.0f, 20);
+        shadow.setScale({ 25.0f, 6.5f });
+        shadow.setOrigin({ 1.0f, 1.0f });
+        shadow.setPosition(panel.getPosition() + sf::Vector2f(94.0f, 101.0f));
+        shadow.setFillColor(sf::Color(0, 0, 0, 90));
+        window.draw(shadow);
+
+        sf::CircleShape wing(17.0f, 18);
+        wing.setOrigin({ 17.0f, 17.0f });
+        wing.setFillColor(sf::Color(160, 244, 255, 118));
+
+        wing.setPosition(fairyCenter + sf::Vector2f(-15.0f, -5.0f - wingLift * 0.35f));
+        wing.setScale({ 0.9f, 1.45f });
+        wing.setRotation(sf::degrees(-26.0f - wingLift));
+        window.draw(wing);
+
+        wing.setPosition(fairyCenter + sf::Vector2f(15.0f, -5.0f + wingLift * 0.35f));
+        wing.setScale({ 0.9f, 1.45f });
+        wing.setRotation(sf::degrees(26.0f + wingLift));
+        window.draw(wing);
+
+        sf::CircleShape head(8.0f, 18);
+        head.setOrigin({ 8.0f, 8.0f });
+        head.setPosition(fairyCenter + sf::Vector2f(0.0f, -18.0f));
+        head.setFillColor(sf::Color(255, 224, 198));
+        window.draw(head);
+
+        sf::ConvexShape dress(4);
+        dress.setPoint(0, { 0.0f, -16.0f });
+        dress.setPoint(1, { 13.0f, 8.0f });
+        dress.setPoint(2, { 0.0f, 24.0f });
+        dress.setPoint(3, { -13.0f, 8.0f });
+        dress.setPosition(fairyCenter);
+        dress.setFillColor(sf::Color(112, 96, 255));
+        window.draw(dress);
+
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-6.0f, -10.0f), { 12.0f, 14.0f }, sf::Color(147, 124, 255));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-3.0f, 14.0f), { 2.0f, 12.0f }, sf::Color(255, 224, 198));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(1.0f, 14.0f), { 2.0f, 12.0f }, sf::Color(255, 224, 198));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-14.0f, -1.0f), { 7.0f, 3.0f }, sf::Color(255, 224, 198));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(7.0f, -1.0f), { 7.0f, 3.0f }, sf::Color(255, 224, 198));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-5.0f, -21.0f), { 10.0f, 4.0f }, sf::Color(115, 238, 173));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-2.0f, -17.0f), { 4.0f, 3.0f }, sf::Color(82, 176, 121));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-3.0f, -20.0f), { 2.0f, 2.0f }, sf::Color(45, 34, 58));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(1.0f, -20.0f), { 2.0f, 2.0f }, sf::Color(45, 34, 58));
+        drawPixelRect(window, fairyCenter + sf::Vector2f(-1.0f, -15.0f), { 3.0f, 2.0f }, sf::Color(238, 120, 154));
+
+        constexpr std::array<sf::Vector2f, 5> sparkleOffsets = {
+            sf::Vector2f(-46.0f, -14.0f),
+            sf::Vector2f(-30.0f, 18.0f),
+            sf::Vector2f(34.0f, -22.0f),
+            sf::Vector2f(46.0f, 12.0f),
+            sf::Vector2f(20.0f, 30.0f)
+        };
+
+        for (std::size_t index = 0; index < sparkleOffsets.size(); ++index)
+        {
+            const float twinkle = (std::sin(elapsedSeconds * 4.4f + static_cast<float>(index) * 1.3f) + 1.0f) * 0.5f;
+            const sf::Vector2f sparkleCenter = fairyCenter + sparkleOffsets[index] + sf::Vector2f(0.0f, std::sin(elapsedSeconds * 2.5f + static_cast<float>(index)) * 2.0f);
+            const sf::Color sparkleColor = index % 2 == 0
+                ? sf::Color(255, 239, 153, static_cast<std::uint8_t>(110.0f + twinkle * 110.0f))
+                : sf::Color(127, 232, 255, static_cast<std::uint8_t>(110.0f + twinkle * 110.0f));
+
+            drawPixelRect(window, sparkleCenter + sf::Vector2f(-1.0f, -5.0f), { 3.0f, 10.0f }, sparkleColor);
+            drawPixelRect(window, sparkleCenter + sf::Vector2f(-5.0f, -1.0f), { 10.0f, 3.0f }, sparkleColor);
+        }
+    
+    }
+
+    void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player, float elapsedSeconds)
     {
         sf::RectangleShape panel({ 430.0f, 198.0f });
         panel.setPosition({ 18.0f, 16.0f });
@@ -1381,6 +1473,8 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
             player.canClimb,
             "CLIMB",
             true);
+
+            drawHUDfairy(window, elapsedSeconds);
     }
 
     void DrawAbilityWarningOverlay(sf::RenderWindow& window, const sf::FloatRect& buttonBounds, bool buttonHovered)
@@ -2288,6 +2382,7 @@ int main()
         }
 
         drawPortal(window, levelToDraw, PortalReady, currentLevelIndex, effectClock.getElapsedTime().asSeconds());
+
         for (const Mob& mob : levelToDraw.mobs)
         {
             drawMob(window, mob, currentLevelIndex, effectClock.getElapsedTime().asSeconds());
@@ -2297,7 +2392,7 @@ int main()
         DrawEnemyProjectiles(window, enemyProjectiles);
         DrawFloatingDamage(window, damageNumbers);
         drawPlayer(window, player, effectClock.getElapsedTime().asSeconds());
-        DrawSpellAndAbilityHud(window, activeSpell, player);
+        DrawSpellAndAbilityHud(window, activeSpell, player, effectClock.getElapsedTime().asSeconds());
         drawCoinsHud(window, levelToDraw);
         if (gameLost)
         {
