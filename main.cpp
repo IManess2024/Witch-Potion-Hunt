@@ -24,6 +24,7 @@ namespace
     constexpr float kFrameSeconds = 1.0f / kFixedDt;
     constexpr float kPi = 3.14159265f;
 
+
     enum class ParticleKind
     {
         Spark,
@@ -158,6 +159,16 @@ namespace
             point.y >= rect.position.y && point.y <= rect.position.y + rect.size.y;
 
     }
+
+sf::Vector2f GetMouseWorldPosition(const sf::RenderWindow& window)
+{
+    return window.mapPixelToCoords(sf::Mouse::getPosition(window));
+}
+
+sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i PixelPosition)
+{
+    return window.mapPixelToCoords(PixelPosition);
+}
 
     bool CanRestart(bool gamewon, bool gamelost)
     {
@@ -1767,9 +1778,9 @@ int main()
                 }
                 else if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    const sf::Vector2f clickposition(
-                        static_cast<float>(mousepressed->position.x),
-                        static_cast<float>(mousepressed->position.y));
+                    const sf::Vector2f clickposition = GetEventWorldPosition(window, mousepressed->position);
+                       
+                        
                     if (mousepressed->button == sf::Mouse::Button::Left &&
                         IsPointInside(GetMainMenuPlayBounds(), clickposition))
                     {
@@ -1801,9 +1812,8 @@ int main()
                 }
                 else if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    const sf::Vector2f clickposition(
-                        static_cast<float>(mousepressed->position.x),
-                        static_cast<float>(mousepressed->position.y));
+                 const sf::Vector2f clickposition = GetEventWorldPosition(window, mousepressed->position);
+
                     if (mousepressed->button == sf::Mouse::Button::Left &&
                         IsPointInside(GetSettingsBackBounds(), clickposition))
                     {
@@ -1871,9 +1881,8 @@ int main()
             {
                 if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    const sf::Vector2f clickposition(
-                        static_cast<float>(mousepressed->position.x),
-                        static_cast<float>(mousepressed->position.y));
+                const sf::Vector2f clickposition = GetEventWorldPosition(window, mousepressed->position);
+
                     if (mousepressed->button == sf::Mouse::Button::Left &&
                         IsPointInside(GetLevelIntroOkBounds(), clickposition))
                     {
@@ -1893,9 +1902,7 @@ int main()
             {
                 if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    const sf::Vector2f clickposition(
-                        static_cast<float>(mousepressed->position.x),
-                        static_cast<float>(mousepressed->position.y));
+                const sf::Vector2f clickposition = GetEventWorldPosition(window, mousepressed->position);
                     if (mousepressed->button == sf::Mouse::Button::Left &&
                         IsPointInside(GetAbilityWarningOkBounds(), clickposition))
                     {
@@ -1916,9 +1923,8 @@ int main()
             {
                 if (const auto* mousepressed = event->getIf<sf::Event::MouseButtonPressed>())
                 {
-                    const sf::Vector2f clickposition(
-                        static_cast<float>(mousepressed->position.x),
-                        static_cast<float>(mousepressed->position.y));
+                const sf::Vector2f clickposition = GetEventWorldPosition(window, mousepressed->position);
+
                     if (mousepressed->button == sf::Mouse::Button::Left &&
                         IsPointInside(GetRestartButtonBounds(), clickposition))
                     {
@@ -1950,9 +1956,7 @@ int main()
 
         if (screen == GameScreen::MainMenu)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+        const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
             window.clear(sf::Color(24, 28, 36));
             DrawMainMenu(window, mousePoint, effectClock.getElapsedTime().asSeconds());
             window.display();
@@ -1961,9 +1965,8 @@ int main()
 
         if (screen == GameScreen::Settings)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+        const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
+
             window.clear(sf::Color(24, 28, 36));
             DrawSettingsScreen(window, mousePoint, effectClock.getElapsedTime().asSeconds());
             window.display();
@@ -1999,12 +2002,12 @@ int main()
         {
             if (castingHeld && spellCooldown <= 0.0f)
             {
-                const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+                
                 const bool castSucceeded = CastSpell(spellProjectiles,
                     magicParticles,
                     player,
                     activeSpell,
-                    sf::Vector2f(static_cast<float>(mousePosition.x), static_cast<float>(mousePosition.y)),
+                    GetMouseWorldPosition(window),
                     particleSeed,
                     audio);
                 spellCooldown = castSucceeded
@@ -2298,23 +2301,20 @@ int main()
         drawCoinsHud(window, levelToDraw);
         if (gameLost)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+            const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
+
             DrawEndOverlay(window, false, mousePoint, effectClock.getElapsedTime().asSeconds());
         }
         else if (gameWon)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+            const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
+
             DrawEndOverlay(window, true, mousePoint, effectClock.getElapsedTime().asSeconds());
         }
         else if (levelIntroVisible)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+            const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
+
             const sf::FloatRect okButtonBounds = GetLevelIntroOkBounds();
             DrawLevelIntroOverlay(window,
                 currentLevelIndex,
@@ -2323,9 +2323,8 @@ int main()
         }
         else if (abilityWarningVisible)
         {
-            const sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-            const sf::Vector2f mousePoint(static_cast<float>(mousePosition.x),
-                static_cast<float>(mousePosition.y));
+            const sf::Vector2f mousePoint = GetMouseWorldPosition(window);
+
             const sf::FloatRect okButtonBounds = GetAbilityWarningOkBounds();
             DrawAbilityWarningOverlay(window,
                 okButtonBounds,
