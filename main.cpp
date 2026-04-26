@@ -177,20 +177,27 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
 
     std::array<std::string_view, 3> GetFairyHint(std::size_t levelindex, bool portalready)
     {
-        if(portalready == true)
+        if (portalready)
         {
-            return{"The portal is ready!", "Go to the cauldron!", "Jump into the glow!"};
+            return { "PORTAL IS READY", "GO TO THE CAULDRON", "JUMP INTO THE GLOW" };
+        }
+        if (levelindex == 0)
+        {
+            return { "COLLECT ALL FOUR COINS", "LEFT CLICK CASTS SPELLS", "MANA COMES BACK OVER TIME" };
+        }
+        if (levelindex == 1)
+        {
+            return { "DOUBLE JUMP IS READY", "JUMP AGAIN IN MID AIR", "TIME IT CAREFULLY" };
+        }
+        return { "CLIMB THE GREEN VINES", "HOLD W OR S TO CLIMB", "THEN REACH THE PORTAL" };
+    }
 
-        }
-        if(levelindex == 0)
-        {
-            return {"collect all four coins!", "Left click casts your spells.", "Mana regenerates with time."};
-        }
-        if(levelindex == 1)
-        {
-            return {"You can now double jump!", "Jump twice in the air!", "Time it carefully- you don't want to waste it..."};
-        }
-        return{"Climb the green vines!", "Hold \"W\" or \"S\" to climb the walls!", "Then you can reach the portal."};
+    sf::Vector2f GetRightHudPanelPosition(const sf::RenderWindow& window, sf::Vector2f panelSize, float topY)
+    {
+        return {
+            static_cast<float>(window.getSize().x) - panelSize.x - 18.0f,
+            topY
+        };
     }
 
     float GetVectorLength(sf::Vector2f vector)
@@ -1293,13 +1300,21 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
 
     void drawHUDfairy(sf::RenderWindow& window, std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
-        const sf::Vector2f panelPosition(832.0f, 228.0f);
-        sf::RectangleShape panel({ 188.0f, 122.0f });
-        panel.setPosition({ 18.0f, 228.0f });
+        const sf::Vector2f panelSize(430.0f, 132.0f);
+        const sf::Vector2f panelPosition = GetRightHudPanelPosition(window, panelSize, 228.0f);
+        sf::RectangleShape panel(panelSize);
+        panel.setPosition(panelPosition);
         panel.setFillColor(sf::Color(27, 23, 40, 205));
         panel.setOutlineThickness(2.0f);
         panel.setOutlineColor(sf::Color(138, 117, 194, 160));
         window.draw(panel);
+
+        sf::ConvexShape pointer(3);
+        pointer.setPoint(0, panelPosition + sf::Vector2f(320.0f, 64.0f));
+        pointer.setPoint(1, panelPosition + sf::Vector2f(350.0f, 52.0f));
+        pointer.setPoint(2, panelPosition + sf::Vector2f(350.0f, 78.0f));
+        pointer.setFillColor(sf::Color(27, 23, 40, 205));
+        window.draw(pointer);
 
         drawPixelRect(window, panel.getPosition() + sf::Vector2f(2.0f, 2.0f), { 426.0f, 4.0f }, sf::Color(255, 255, 255, 22));
         drawBlockLabel(window, "FAIRY SAYS", panel.getPosition() + sf::Vector2f(16.0f, 14.0f), 1.75f, 2.0f, sf::Color(242, 232, 186));
@@ -1314,8 +1329,8 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         }
         
 
-        const sf::Vector2f fairyCenter = panel.getPosition() +
-            sf::Vector2f(94.0f, 76.0f + std::sin(elapsedSeconds * 2.1f) * 4.5f);
+        const sf::Vector2f fairyCenter = panelPosition +
+            sf::Vector2f(372.0f, 82.0f + std::sin(elapsedSeconds * 2.1f) * 4.5f);
         const float wingLift = std::sin(elapsedSeconds * 8.0f) * 5.0f;
         const float shimmer = (std::sin(elapsedSeconds * 3.6f) + 1.0f) * 0.5f;
 
@@ -1328,7 +1343,7 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         sf::CircleShape shadow(1.0f, 20);
         shadow.setScale({ 25.0f, 6.5f });
         shadow.setOrigin({ 1.0f, 1.0f });
-        shadow.setPosition(panel.getPosition() + sf::Vector2f(94.0f, 101.0f));
+        shadow.setPosition(panelPosition + sf::Vector2f(372.0f, 112.0f));
         shadow.setFillColor(sf::Color(0, 0, 0, 90));
         window.draw(shadow);
 
@@ -1373,11 +1388,11 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         drawPixelRect(window, fairyCenter + sf::Vector2f(-1.0f, -15.0f), { 3.0f, 2.0f }, sf::Color(238, 120, 154));
 
         constexpr std::array<sf::Vector2f, 5> sparkleOffsets = {
-            sf::Vector2f(-46.0f, -14.0f),
-            sf::Vector2f(-30.0f, 18.0f),
-            sf::Vector2f(34.0f, -22.0f),
-            sf::Vector2f(46.0f, 12.0f),
-            sf::Vector2f(20.0f, 30.0f)
+            sf::Vector2f(-36.0f, -14.0f),
+            sf::Vector2f(-24.0f, 18.0f),
+            sf::Vector2f(26.0f, -22.0f),
+            sf::Vector2f(36.0f, 12.0f),
+            sf::Vector2f(12.0f, 30.0f)
         };
 
         for (std::size_t index = 0; index < sparkleOffsets.size(); ++index)
@@ -1397,17 +1412,24 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
     void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player, 
         std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
-        sf::RectangleShape panel({ 430.0f, 198.0f });
-        panel.setPosition({ 18.0f, 16.0f });
+        const sf::Vector2f panelSize(430.0f, 198.0f);
+        const sf::Vector2f panelPosition = GetRightHudPanelPosition(window, panelSize, 16.0f);
+        const auto panelOffset = [&](float x, float y)
+        {
+            return panelPosition + sf::Vector2f(x, y);
+        };
+
+        sf::RectangleShape panel(panelSize);
+        panel.setPosition(panelPosition);
         panel.setFillColor(sf::Color(28, 24, 42, 210));
         panel.setOutlineThickness(2.0f);
         panel.setOutlineColor(sf::Color(142, 113, 198, 180));
         window.draw(panel);
 
-        drawPixelRect(window, { 20.0f, 18.0f }, { 426.0f, 5.0f }, sf::Color(255, 255, 255, 24));
-        DrawResourceBar(window, "HP", { 34.0f, 32.0f }, { 160.0f, 16.0f }, static_cast<float>(player.health), static_cast<float>(player.maxHealth), sf::Color(231, 73, 83, 235));
-        DrawResourceBar(window, "MANA", { 34.0f, 56.0f }, { 160.0f, 16.0f }, player.mana, player.maxMana, sf::Color(83, 180, 255, 235));
-        drawBlockLabel(window, "SPELLS", { 34.0f, 84.0f }, 1.8f, 2.0f, sf::Color(191, 204, 255));
+        drawPixelRect(window, panelOffset(2.0f, 2.0f), { 426.0f, 5.0f }, sf::Color(255, 255, 255, 24));
+        DrawResourceBar(window, "HP", panelOffset(16.0f, 16.0f), { 160.0f, 16.0f }, static_cast<float>(player.health), static_cast<float>(player.maxHealth), sf::Color(231, 73, 83, 235));
+        DrawResourceBar(window, "MANA", panelOffset(16.0f, 40.0f), { 160.0f, 16.0f }, player.mana, player.maxMana, sf::Color(83, 180, 255, 235));
+        drawBlockLabel(window, "SPELLS", panelOffset(16.0f, 68.0f), 1.8f, 2.0f, sf::Color(191, 204, 255));
 
         constexpr std::array<SpellType, 3> spells = {
             SpellType::StarBolt,
@@ -1423,7 +1445,7 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         for (std::size_t index = 0; index < spells.size(); ++index)
         {
             const bool active = spells[index] == activeSpell;
-            const sf::Vector2f origin(34.0f + static_cast<float>(index) * 44.0f, 108.0f);
+            const sf::Vector2f origin = panelOffset(16.0f + static_cast<float>(index) * 44.0f, 92.0f);
             sf::RectangleShape slot({ 34.0f, 34.0f });
             slot.setPosition(origin);
             slot.setFillColor(active ? sf::Color(72, 57, 96, 235) : sf::Color(43, 36, 58, 220));
@@ -1484,21 +1506,21 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
 
         drawBlockLabel(window,
             GetSpellName(activeSpell),
-            { 178.0f, 113.0f },
+            panelOffset(160.0f, 97.0f),
             2.0f,
             3.0f,
             sf::Color(235, 232, 255));
 
-        drawPixelRect(window, { 34.0f, 153.0f }, { 384.0f, 2.0f }, sf::Color(142, 113, 198, 90));
-        drawBlockLabel(window, "ABILITIES", { 34.0f, 174.0f }, 1.55f, 1.8f, sf::Color(191, 204, 255));
+        drawPixelRect(window, panelOffset(16.0f, 137.0f), { 384.0f, 2.0f }, sf::Color(142, 113, 198, 90));
+        drawBlockLabel(window, "ABILITIES", panelOffset(16.0f, 158.0f), 1.55f, 1.8f, sf::Color(191, 204, 255));
         drawHudAbilityBadge(window,
-            { 132.0f, 164.0f },
+            panelOffset(114.0f, 148.0f),
             { 112.0f, 38.0f },
             player.canDoubleJump && player.extraJumpsRemaining > 0,
             "D JUMP",
             false);
         drawHudAbilityBadge(window,
-            { 260.0f, 164.0f },
+            panelOffset(242.0f, 148.0f),
             { 100.0f, 38.0f },
             player.canClimb,
             "CLIMB",
