@@ -175,6 +175,24 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         return gamewon || gamelost;
     }
 
+    std::array<std::string_view, 3> GetFairyHint(std::size_t levelindex, bool portalready)
+    {
+        if(portalready == true)
+        {
+            return{"The portal is ready!", "Go to the cauldron!", "Jump into the glow!"};
+
+        }
+        if(levelindex == 0)
+        {
+            return {"collect all four coins!", "Left click casts your spells.", "Mana regenerates with time."};
+        }
+        if(levelindex == 1)
+        {
+            return {"You can now double jump!", "Jump twice in the air!", "Time it carefully- you don't want to waste it..."};
+        }
+        return{"Climb the green vines!", "Hold \"W\" or \"S\" to climb the walls!", "Then you can reach the portal."};
+    }
+
     float GetVectorLength(sf::Vector2f vector)
     {
         return std::sqrt(vector.x * vector.x + vector.y * vector.y);
@@ -1273,8 +1291,9 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
             sf::Color(255, 255, 255, 55));
     }
 
-    void drawHUDfairy(sf::RenderWindow& window, float elapsedSeconds)
+    void drawHUDfairy(sf::RenderWindow& window, std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
+        const sf::Vector2f panelPosition(832.0f, 228.0f);
         sf::RectangleShape panel({ 188.0f, 122.0f });
         panel.setPosition({ 18.0f, 228.0f });
         panel.setFillColor(sf::Color(27, 23, 40, 205));
@@ -1282,8 +1301,18 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         panel.setOutlineColor(sf::Color(138, 117, 194, 160));
         window.draw(panel);
 
-        drawPixelRect(window, panel.getPosition() + sf::Vector2f(2.0f, 2.0f), { 184.0f, 4.0f }, sf::Color(255, 255, 255, 22));
-        drawBlockLabel(window, "FAIRY", panel.getPosition() + sf::Vector2f(16.0f, 14.0f), 1.75f, 2.0f, sf::Color(242, 232, 186));
+        drawPixelRect(window, panel.getPosition() + sf::Vector2f(2.0f, 2.0f), { 426.0f, 4.0f }, sf::Color(255, 255, 255, 22));
+        drawBlockLabel(window, "FAIRY SAYS", panel.getPosition() + sf::Vector2f(16.0f, 14.0f), 1.75f, 2.0f, sf::Color(242, 232, 186));
+
+        const std::array<std::string_view, 3> hintlines = GetFairyHint(levelindex, portalready);
+
+        for (std::size_t i = 0; i < hintlines.size(); i++)
+        {
+            drawBlockLabel(window, hintlines[i], 
+                panelPosition + sf::Vector2f(18.0f, 42.0f + static_cast<float>(i)*24.0f), 
+                1.45f, 1.6f, i == 0? sf::Color(235, 232, 255):sf::Color(196, 208, 232));
+        }
+        
 
         const sf::Vector2f fairyCenter = panel.getPosition() +
             sf::Vector2f(94.0f, 76.0f + std::sin(elapsedSeconds * 2.1f) * 4.5f);
@@ -1365,7 +1394,8 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
     
     }
 
-    void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player, float elapsedSeconds)
+    void DrawSpellAndAbilityHud(sf::RenderWindow& window, SpellType activeSpell, const Player& player, 
+        std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
         sf::RectangleShape panel({ 430.0f, 198.0f });
         panel.setPosition({ 18.0f, 16.0f });
@@ -1474,7 +1504,7 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
             "CLIMB",
             true);
 
-            drawHUDfairy(window, elapsedSeconds);
+            drawHUDfairy(window, levelindex, portalready, elapsedSeconds);
     }
 
     void DrawAbilityWarningOverlay(sf::RenderWindow& window, const sf::FloatRect& buttonBounds, bool buttonHovered)
@@ -2392,7 +2422,7 @@ int main()
         DrawEnemyProjectiles(window, enemyProjectiles);
         DrawFloatingDamage(window, damageNumbers);
         drawPlayer(window, player, effectClock.getElapsedTime().asSeconds());
-        DrawSpellAndAbilityHud(window, activeSpell, player, effectClock.getElapsedTime().asSeconds());
+        DrawSpellAndAbilityHud(window, activeSpell, player, currentLevelIndex, PortalReady, effectClock.getElapsedTime().asSeconds());
         drawCoinsHud(window, levelToDraw);
         if (gameLost)
         {
