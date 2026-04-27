@@ -952,15 +952,20 @@ inline void drawHudAbilityBadge(sf::RenderWindow& window,
 
 inline void drawCoinsHud(sf::RenderWindow& window, const Level& level)
 {
-    sf::RectangleShape panel({ 338.0f, 92.0f });
-    panel.setPosition({ 924.0f, 16.0f });
+    const sf::Vector2f panelSize(338.0f, 92.0f);
+    const sf::Vector2f panelPosition(
+        static_cast<float>(window.getSize().x) - panelSize.x - 18.0f,
+        16.0f);
+
+    sf::RectangleShape panel(panelSize);
+    panel.setPosition(panelPosition);
     panel.setFillColor(sf::Color(24, 22, 34, 220));
     panel.setOutlineThickness(2.0f);
     panel.setOutlineColor(sf::Color(142, 113, 198, 150));
     window.draw(panel);
 
-    drawPixelRect(window, { 926.0f, 18.0f }, { 334.0f, 5.0f }, sf::Color(255, 255, 255, 28));
-    drawBlockLabel(window, "COINS TO COLLECT", { 940.0f, 29.0f }, 2.0f, 2.0f, sf::Color(241, 231, 189));
+    drawPixelRect(window, panelPosition + sf::Vector2f(2.0f, 2.0f), { 334.0f, 5.0f }, sf::Color(255, 255, 255, 28));
+    drawBlockLabel(window, "COINS TO COLLECT", panelPosition + sf::Vector2f(16.0f, 13.0f), 2.0f, 2.0f, sf::Color(241, 231, 189));
 
     const int collectedCount = static_cast<int>(std::count_if(level.ingredients.begin(),
         level.ingredients.end(),
@@ -972,13 +977,13 @@ inline void drawCoinsHud(sf::RenderWindow& window, const Level& level)
     for (std::size_t i = 0; i < level.ingredients.size(); ++i)
     {
         drawHudIngredientToken(window,
-            { 954.0f + static_cast<float>(i) * 34.0f, 70.0f },
+            panelPosition + sf::Vector2f(30.0f + static_cast<float>(i) * 34.0f, 54.0f),
             static_cast<int>(i) < collectedCount,
             i);
     }
 
     const std::string progress = std::to_string(collectedCount) + "/" + std::to_string(level.ingredients.size());
-    drawBlockLabel(window, progress, { 1104.0f, 61.0f }, 2.0f, 2.0f, sf::Color(235, 232, 255));
+    drawBlockLabel(window, progress, panelPosition + sf::Vector2f(180.0f, 45.0f), 2.0f, 2.0f, sf::Color(235, 232, 255));
 }
 
 inline void drawConfetti(sf::RenderWindow& window, float elapsedSeconds)
