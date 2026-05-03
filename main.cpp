@@ -200,6 +200,14 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         };
     }
 
+    sf::Vector2f GetLeftHudPanelPosition(float topY)
+    {
+        return {
+            18.0f,
+            topY
+        };
+    }
+
     float GetVectorLength(sf::Vector2f vector)
     {
         return std::sqrt(vector.x * vector.x + vector.y * vector.y);
@@ -1301,7 +1309,7 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
     void drawHUDfairy(sf::RenderWindow& window, std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
         const sf::Vector2f panelSize(430.0f, 132.0f);
-        const sf::Vector2f panelPosition = GetRightHudPanelPosition(window, panelSize, 228.0f);
+        const sf::Vector2f panelPosition = GetRightHudPanelPosition(window, panelSize, 124.0f);
         sf::RectangleShape panel(panelSize);
         panel.setPosition(panelPosition);
         panel.setFillColor(sf::Color(27, 23, 40, 205));
@@ -1413,7 +1421,7 @@ sf::Vector2f GetEventWorldPosition(const sf::RenderWindow& window, sf::Vector2i 
         std::size_t levelindex, bool portalready, float elapsedSeconds)
     {
         const sf::Vector2f panelSize(430.0f, 198.0f);
-        const sf::Vector2f panelPosition = GetRightHudPanelPosition(window, panelSize, 16.0f);
+        const sf::Vector2f panelPosition = GetLeftHudPanelPosition(16.0f);
         const auto panelOffset = [&](float x, float y)
         {
             return panelPosition + sf::Vector2f(x, y);

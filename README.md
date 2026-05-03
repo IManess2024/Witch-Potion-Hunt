@@ -1,10 +1,34 @@
 # Witch-Potion-Hunt
 
-This is where we work on the game Witch Potion Hunt.
+Witch Potion Hunt is a small 2D action-platformer built with C++ and SFML. You play as a witch, collect coins, fight enemies with spells, unlock movement abilities, and enter the portal to advance through the game.
+
+## Gameplay Overview
+
+- There are 3 levels.
+- Each level contains 4 coins to collect.
+- The portal opens only after all 4 coins are collected.
+- Enemies damage your HP on contact or by shooting projectiles.
+- Spells consume mana, and mana restores over time.
+- Level 2 unlocks double jump.
+- Level 3 unlocks climbing on green vines.
+
+## Controls
+
+- Move: `A` / `D` or `Left` / `Right`
+- Jump: `Space`, `W`, or `Up`
+- Climb: `W` / `S` or `Up` / `Down` while touching a green climb wall
+- Select spells: `1`, `2`, `3`
+- Cast spell: `Left Click`
+- Restart after win or loss: `R` or `Enter`
+- Leave settings / confirm some overlays: `Enter` or `Escape`
+
+## Tech Notes
+
+- The project uses CMake and automatically downloads SFML `3.0.2` during configuration.
+- The game uses generated audio, so no external sound asset pack is required.
+- The codebase targets C++17.
 
 ## Build And Run
-
-This project uses CMake and downloads SFML 3 automatically during configuration, so you do not need to install SFML manually.
 
 ### Clone
 
@@ -46,6 +70,8 @@ Configure the project:
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 ```
+
+The first configure can take a little longer because CMake downloads SFML and builds its dependencies.
 
 ### Build
 
